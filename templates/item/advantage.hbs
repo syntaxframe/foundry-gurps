@@ -1,5 +1,9 @@
 <section class="body">
   <div class="form-group">
+    <label>{{localize "GMENTOR.TraitNotes"}}</label>
+    <input type="text" name="system.notes" value="{{system.notes}}">
+  </div>
+  <div class="form-group">
     <label>{{localize "GMENTOR.BasePoints"}}</label>
     <input type="number" name="system.basePoints" value="{{system.basePoints}}">
   </div>
@@ -29,15 +33,54 @@
     <a data-action="addModifier" data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
   </h4>
   <table class="modifiers">
+    {{#if system.modifiers.length}}
+    <tr>
+      <th></th>
+      <th>{{localize "Name"}}</th>
+      <th colspan="2">{{localize "GMENTOR.Cost"}}</th>
+      <th>{{localize "GMENTOR.Affects.label"}}</th>
+      <th data-tooltip="GMENTOR.ModifierLevelsHint">{{localize "GMENTOR.ModifierLevels"}}</th>
+      <th data-tooltip="GMENTOR.ModifierGroupHint">{{localize "GMENTOR.ModifierGroup"}}</th>
+      <th></th>
+      <th></th>
+    </tr>
+    {{/if}}
     {{#each system.modifiers}}
     <tr>
       <td><input type="checkbox" name="system.modifiers.{{@index}}.enabled" {{checked enabled}}></td>
-      <td><input type="text" name="system.modifiers.{{@index}}.name" value="{{name}}" placeholder="{{localize "Name"}}"></td>
-      <td class="percent"><input type="number" name="system.modifiers.{{@index}}.value" value="{{value}}">%</td>
+      <td><input type="text" name="system.modifiers.{{@index}}.name" value="{{name}}" placeholder="{{localize "Name"}}"
+        {{#if notes}}data-tooltip-text="{{notes}}"{{/if}}></td>
+      <td class="number"><input type="number" name="system.modifiers.{{@index}}.value" value="{{value}}" step="any"></td>
+      <td class="cost-type"><select name="system.modifiers.{{@index}}.costType">{{selectOptions @root.choices.costType selected=costType localize=true}}</select></td>
+      <td><select name="system.modifiers.{{@index}}.affects">{{selectOptions @root.choices.affects selected=affects localize=true}}</select></td>
+      <td class="number"><input type="number" name="system.modifiers.{{@index}}.levels" value="{{levels}}" min="1"></td>
+      <td class="group"><input type="text" name="system.modifiers.{{@index}}.group" value="{{group}}"></td>
+      <td>
+        {{!-- Пометка, ссылка и эффекты модификатора — в раскрывающейся строке под ним --}}
+        <a class="modifier-toggle" data-action="toggleModifier" data-index="{{@index}}" data-tooltip="GMENTOR.ModifierDetails">
+          <i class="fa-solid {{#if (lookup @root.expandedModifiers @index)}}fa-chevron-up{{else}}fa-chevron-down{{/if}}" inert></i>
+          {{#if features.length}}<span class="feature-count">{{features.length}}</span>{{/if}}
+        </a>
+      </td>
       <td><a data-action="deleteModifier" data-index="{{@index}}"><i class="fa-solid fa-trash" inert></i></a></td>
     </tr>
+    {{#if (lookup @root.expandedModifiers @index)}}
+    <tr class="modifier-details">
+      <td></td>
+      <td colspan="8">
+        <div class="modifier-fields">
+          <input type="text" name="system.modifiers.{{@index}}.notes" value="{{notes}}" placeholder="{{localize "GMENTOR.TraitNotes"}}">
+          <input type="text" name="system.modifiers.{{@index}}.reference" value="{{reference}}" placeholder="{{localize "GMENTOR.Reference"}}">
+        </div>
+        {{> "systems/gmentor/templates/item/features.hbs" features=features prefix=(concat "system.modifiers." @index ".features") modifier=@index}}
+      </td>
+    </tr>
+    {{/if}}
     {{/each}}
   </table>
 
   <p class="result">{{localize "GMENTOR.Cost"}}: <strong>{{system.cost}}</strong></p>
+
+  <h4 data-tooltip="GMENTOR.FeaturesHint">{{localize "GMENTOR.Features"}}</h4>
+  {{> "systems/gmentor/templates/item/features.hbs" features=system.features prefix="system.features" modifier=""}}
 </section>

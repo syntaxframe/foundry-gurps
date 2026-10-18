@@ -9,6 +9,8 @@
           {{> "systems/gmentor/templates/actor/item-row.hbs"}}
           <span class="item-cost">{{item.system.cost}}</span>
           <div class="item-details">
+            {{#if item.system.notes}}<span class="item-notes">{{item.system.notes}}</span>{{/if}}
+            {{#if effects}}<span class="item-effects">{{effects}}</span>{{/if}}
             {{#if item.system.pointsPerLevel}}
             <label>{{localize "GMENTOR.LevelLabel"}}
               <input type="number" data-item-field="system.levels" value="{{item.system.levels}}" min="0"></label>
@@ -20,7 +22,7 @@
             </span>
             {{/if}}
             {{#each item.system.modifiers}}
-            {{#if enabled}}<span class="item-modifier">{{name}} ({{numberFormat value sign=true}}%)</span>{{/if}}
+            {{#if enabled}}<span class="item-modifier">{{name}} ({{#if (eq costType "multiplier")}}×{{value}}{{else}}{{numberFormat value sign=true}}{{#if (eq costType "percentage")}}%{{else}} {{localize "GMENTOR.CostType.points"}}{{/if}}{{/if}})</span>{{/if}}
             {{/each}}
           </div>
           {{#if description}}<div class="item-description">{{{description}}}</div>{{/if}}
@@ -37,7 +39,6 @@
           <a class="item-name" data-action="editItem">{{item.name}}</a>
           {{> "systems/gmentor/templates/actor/item-row.hbs"}}
           {{> "systems/gmentor/templates/actor/learned-values.hbs"}}
-          {{#if item.system.specialization}}<div class="item-details">{{item.system.specialization}}</div>{{/if}}
           {{#if description}}<div class="item-description">{{{description}}}</div>{{/if}}
         </li>
         {{/each}}

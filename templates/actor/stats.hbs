@@ -99,6 +99,31 @@
     </div>
   </div>
 
+  {{!-- Броски чувств (B358) и модификатор реакции с источниками, как reaction-text в GMentor --}}
+  <div class="card perception">
+    {{#each senses}}
+    <a class="tile rollable" data-action="roll" data-label="{{localize label}}" data-value="{{value}}">
+      <span class="tile-label">{{localize label}}</span>
+      <b>{{value}}</b>
+    </a>
+    {{/each}}
+    <div class="reactions">
+      <span class="tile-label">{{localize "GMENTOR.Reaction"}}</span>
+      {{#if system.reactions.length}}
+      <b>{{numberFormat system.bonuses.reaction sign=true}}</b>
+      <ul>
+        {{#each system.reactions}}
+        <li class="{{#if situation}}situational{{/if}}">
+          {{numberFormat value sign=true}} {{source}}{{#if situation}} — {{situation}}{{/if}}
+        </li>
+        {{/each}}
+      </ul>
+      {{else}}
+      <b>0</b>
+      {{/if}}
+    </div>
+  </div>
+
   <div class="card conditions">
     <h3>
       {{localize "GMENTOR.Conditions"}}

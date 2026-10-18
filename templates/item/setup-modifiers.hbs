@@ -1,0 +1,21 @@
+{{!-- Выбор модификаторов и самоконтроля при добавлении черты, как окно editAdvantage в GMentor --}}
+<p class="setup-price">{{localize "GMENTOR.BasePoints"}}: <b>{{price}}</b></p>
+{{#if modifiers.length}}
+<div class="setup-modifiers">
+  {{#each modifiers}}
+  <label class="setup-modifier {{#if separated}}separated{{/if}}">
+    <input type="checkbox" name="modifier-{{index}}" {{#if group}}data-group="{{group}}"{{/if}} {{checked enabled}}>
+    <span class="setup-name">{{name}}{{#if notes}} <span class="setup-notes">({{notes}})</span>{{/if}}</span>
+    <span class="setup-cost">{{cost}}</span>
+    <span class="setup-ref">{{reference}}</span>
+  </label>
+  {{/each}}
+</div>
+{{/if}}
+{{#if cr}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.SelfControl"}}</label>
+  <select name="cr">{{selectOptions crChoices selected=cr localize=true}}</select>
+</div>
+<p class="hint">{{localize "GMENTOR.SelfControlHint"}}</p>
+{{/if}}

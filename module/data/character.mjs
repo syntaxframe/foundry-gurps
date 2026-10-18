@@ -11,6 +11,9 @@ const secondary = () => new SchemaField({ mod: integer(0) });
 /** Шкала с текущим значением; max считается в prepareDerivedData. */
 const pool = () => new SchemaField({ value: integer(10), mod: integer(0) });
 
+/** Чувства (B358): бросок от Восприятия с бонусами Обострённых чувств и т.п. Ключи совпадают с bonuses. */
+export const SENSES = ["vision", "hearing", "tasteSmell", "touch"];
+
 /** Поля анкеты в порядке блока profile GMentor (ТУ и МР хранятся отдельно: они участвуют в расчётах). */
 export const PROFILE_FIELDS = ["player", "campaign", "title", "age", "birthday", "eyes", "hair", "skin",
   "handedness", "height", "weight", "gender", "race", "religion", "notes"];
@@ -39,19 +42,21 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
   }
 
   /**
-   * Бонусы от преимуществ и снаряжения. Их заполняют Active Effects (ключи вида system.bonuses.st),
-   * которые Foundry применяет между prepareBaseData и prepareDerivedData.
+   * Бонусы от черт, состояний и снаряжения. Active Effects (ключи вида system.bonuses.st) Foundry применяет
+   * между prepareBaseData и prepareDerivedData, эффекты черт — #applyTraitFeatures в начале prepareDerivedData.
    */
   prepareBaseData() {
     this.bonuses = {
-      st: 0, dx: 0, iq: 0, ht: 0, hp: 0, fp: 0, will: 0, per: 0, speed: 0, move: 0,
-      dodge: 0, parry: 0, block: 0, sm: 0, fright: 0, strikingSt: 0, liftingSt: 0, dr: 0,
+      ...Object.fromEntries(rules.BONUS_TARGETS.map(key => [key, 0])),
+      // СП на всё тело и общий модификатор реакции
+      dr: 0, reaction: 0,
       // От состояний: множитель движения (поза, увечье) и штраф к броскам самоконтроля
       moveMultiplier: 1, selfControl: 0
     };
   }
 
   prepareDerivedData() {
+    this.#applyTraitFeatures();
     const b = this.bonuses;
     const sm = this.sm + b.sm;
     const sizeModifier = rules.sizeCostModifier(sm);
@@ -75,6 +80,7 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
     this.will.fright = this.will.value + b.fright;
     this.per.value = iq.total + this.per.mod + b.per;
     this.per.cost = this.per.mod * 5;
+    this.senses = Object.fromEntries(SENSES.map(key => [key, this.per.value + b[key]]));
     this.speed.value = (ht.total + dx.total) / 4 + this.speed.mod + b.speed;
     this.speed.cost = this.speed.mod * 20;
     this.move.value = Math.floor(this.speed.value) + this.move.mod + b.move;
@@ -103,6 +109,49 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
     this.#prepareEncumbrance();
     this.#prepareDefenses();
     this.#preparePoints(cost);
+  }
+
+  /**
+   * Эффекты черт на характеристики и реакцию. Предметы к этому моменту уже подготовлены, поэтому
+   * activeFeatures посчитаны. Бонусы к умениям и заклинаниям применяются в #prepareItems.
+   */
+  #applyTraitFeatures() {
+    // Все модификаторы реакции с источником, как reaction-text в GMentor; условные в итог не входят
+    this.reactions = [];
+    for ( const item of this.parent.itemTypes.advantage ) {
+      for ( const feature of item.system.activeFeatures ) {
+        if ( feature.type === "attribute" ) this.bonuses[feature.target] += feature.value;
+        else if ( feature.type === "reaction" ) {
+          if ( !feature.situation ) this.bonuses.reaction += feature.value;
+          this.reactions.push({ source: item.name, value: feature.value, situation: feature.situation });
+        }
+      }
+    }
+  }
+
+  /**
+   * Бонусы черт к умению или заклинанию (skill_bonus, spell_bonus в GMentor) с источником: лист показывает,
+   * откуда взялся бонус, а в строке черты — каким умениям она его дала.
+   * @returns {{traitId: string, source: string, value: number}[]}
+   */
+  #traitBonuses(item) {
+    const lower = text => text.trim().toLowerCase();
+    const s = item.system;
+    const matches = feature => {
+      if ( item.type === "spell" ) return rules.compareText(lower(s.college), lower(feature.college), feature.collegeCompare);
+      // Умение без идентификатора бонусов не получает: иначе пустое имя в эффекте совпало бы с любым из них
+      const identifier = rules.toIdentifier(s.identifier);
+      return !!identifier && rules.compareText(identifier, rules.toIdentifier(feature.name), feature.nameCompare)
+        && rules.compareText(lower(s.specialization), lower(feature.specialization), feature.specializationCompare);
+    };
+    const bonuses = [];
+    for ( const trait of this.parent.itemTypes.advantage ) {
+      for ( const feature of trait.system.activeFeatures ) {
+        if ( (feature.type !== item.type) || !feature.value || !matches(feature) ) continue;
+        bonuses.push({ traitId: trait.id, source: trait.name, value: feature.value });
+      }
+    }
+    return bonuses;
   }
 
   /**
@@ -143,7 +192,9 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
         case "spell": {
           const base = this.getAttributeValue(item.type === "spell" ? "iq" : s.attribute);
           const result = rules.skillLevel(base, s.difficulty, s.points);
-          s.level = result ? result.level + s.bonus : null;
+          s.traitBonuses = this.#traitBonuses(item);
+          s.traitBonus = s.traitBonuses.reduce((sum, bonus) => sum + bonus.value, 0);
+          s.level = result ? result.level + s.bonus + s.traitBonus : null;
           s.relative = result?.relative ?? null;
           cost[`${item.type}s`] += s.points;
           break;

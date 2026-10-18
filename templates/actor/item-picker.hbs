@@ -1,0 +1,23 @@
+<section class="picker">
+  <div class="picker-filters">
+    <input type="search" name="search" placeholder="{{localize "GMENTOR.PickerSearch"}}">
+    {{#if folders}}
+    <select name="folder">
+      <option value="">{{localize "GMENTOR.PickerAllFolders"}}</option>
+      {{selectOptions folders}}
+    </select>
+    {{/if}}
+  </div>
+  <ol class="picker-list">
+    {{#each entries}}
+    <li class="picker-entry" data-uuid="{{uuid}}" data-name="{{search}}" data-identifier="{{identifier}}" data-folder="{{folder}}">
+      <a class="picker-name" data-action="pick" {{#if notes}}data-tooltip-text="{{notes}}"{{/if}}>{{name}}</a>
+      <span class="picker-summary">{{summary}}</span>
+    </li>
+    {{/each}}
+  </ol>
+  <footer class="picker-footer">
+    <span class="hint">{{localize "GMENTOR.PickerHint"}}</span>
+    <button type="button" data-action="blank"><i class="fa-solid fa-file" inert></i> {{localize "GMENTOR.PickerBlank"}}</button>
+  </footer>
+</section>

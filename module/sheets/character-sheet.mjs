@@ -1,5 +1,7 @@
 import { CONDITIONS, CONDITION_GROUPS, conditionDescription } from "../conditions.mjs";
-import { PROFILE_FIELDS } from "../data/character.mjs";
+import { PROFILE_FIELDS, SENSES } from "../data/character.mjs";
+import ItemPicker from "./item-picker.mjs";
+import { setupItemData } from "./item-setup.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -52,6 +54,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     actions: {
       roll: CharacterSheet.#onRoll,
       rollDamage: CharacterSheet.#onRollDamage,
+      addItem: CharacterSheet.#onAddItem,
       createItem: CharacterSheet.#onCreateItem,
       editItem: CharacterSheet.#onEditItem,
       deleteItem: CharacterSheet.#onDeleteItem,
@@ -115,6 +118,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
         { label: "GMENTOR.Punch", value: system.damage.punch },
         { label: "GMENTOR.Kick", value: system.damage.kick }
       ].map(tile => ({ ...tile, damage: `${tile.value} cr` })),
+      senses: SENSES.map(key => ({ key, label: `GMENTOR.BonusTarget.${key}`, value: system.senses[key] })),
       advantages: await this.#prepareList("advantage", "GMENTOR.AdvantagesList"),
       skills: await this.#prepareList("skill", "GMENTOR.Skills"),
       spells: await this.#prepareList("spell", "GMENTOR.Spells"),
@@ -153,6 +157,8 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const rows = await Promise.all(items.map(async item => ({
       item,
       stat: this.#learnedStat(item),
+      effects: (type === "advantage") ? this.#traitEffects(item) : "",
+      bonusHint: this.#bonusHint(item),
       description: showDescriptions && item.system.description
         ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(item.system.description, {
           secrets: this.actor.isOwner, relativeTo: item
@@ -160,6 +166,36 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
         : null
     })));
     return { type, title, showDescriptions, rows };
+  }
+
+  /**
+   * Что черта даёт персонажу, одной строкой: «Уклонение +1, Проверка страха +2, Первая помощь +1».
+   * Для умений и заклинаний перечисляем только те, что есть у персонажа: их названия русские, а в эффекте — id.
+   */
+  #traitEffects(trait) {
+    const parts = [];
+    for ( const feature of trait.system.activeFeatures ) {
+      if ( !feature.value ) continue;
+      const value = feature.value.signedString();
+      if ( feature.type === "attribute" ) parts.push(`${game.i18n.localize(`GMENTOR.BonusTarget.${feature.target}`)} ${value}`);
+      else if ( feature.type === "reaction" ) {
+        const reaction = `${game.i18n.localize("GMENTOR.Reaction")} ${value}`;
+        parts.push(feature.situation ? `${reaction} (${feature.situation})` : reaction);
+      }
+    }
+    for ( const learned of [...this.actor.itemTypes.skill, ...this.actor.itemTypes.spell] ) {
+      for ( const bonus of learned.system.traitBonuses ) {
+        if ( bonus.traitId === trait.id ) parts.push(`${learned.name} ${bonus.value.signedString()}`);
+      }
+    }
+    return parts.join(", ");
+  }
+
+  /** Подсказка к уровню умения или заклинания: откуда бонусы черт, «+1 от «Боевые рефлексы»». */
+  #bonusHint(item) {
+    const bonuses = item.system.traitBonuses ?? [];
+    return bonuses.map(({ source, value }) =>
+      game.i18n.format("GMENTOR.BonusFrom", { value: value.signedString(), source })).join("; ");
   }
 
   /** Атрибут и отставание уровня от него, как gc-stat в GMentor: «ЛВ», «ИН+1», «ЗД−2». */
@@ -259,6 +295,36 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   static #onRollDamage(event, target) {
     const { label, damage } = target.dataset;
     return this.actor.rollDamage(label, damage);
+  }
+
+  /** Кнопка «+» списка: выбор из библиотеки, если она есть для этого типа, иначе пустой предмет. */
+  static #onAddItem(event, target) {
+    const pack = game.packs.get(CONFIG.GMENTOR.libraries[target.dataset.type]);
+    if ( !pack ) return CharacterSheet.#onCreateItem.call(this, event, target);
+    new ItemPicker({
+      pack,
+      onPick: async uuid => this.#addItem(game.items.fromCompendium(await fromUuid(uuid), { clearFolder: true })),
+      onBlank: () => CharacterSheet.#onCreateItem.call(this, event, target)
+    }).render({ force: true });
+  }
+
+  /**
+   * Предмет, перенесённый с другого персонажа, из боковой панели или компендиума, добавляем через те же вопросы,
+   * что и из окна выбора. Перетаскивание внутри листа меняет порядок, его оставляем ядру.
+   * @inheritDoc
+   */
+  async _onDropItem(event, item) {
+    if ( !this.actor.isOwner || (item.parent?.uuid === this.actor.uuid) ) return super._onDropItem(event, item);
+    const keepId = !this.actor.items.has(item.id);
+    const data = item.inCompendium ? game.items.fromCompendium(item, { clearFolder: true, keepId }) : item.toObject();
+    return this.#addItem(data, { keepId });
+  }
+
+  /** Задать вопросы по новому предмету (модификаторы, самоконтроль, заглушки) и добавить его персонажу. */
+  async #addItem(data, options = {}) {
+    const answered = await setupItemData(data);
+    if ( !answered ) return null;
+    return Item.implementation.create(answered, { parent: this.actor, ...options });
   }
 
   static #onCreateItem(event, target) {

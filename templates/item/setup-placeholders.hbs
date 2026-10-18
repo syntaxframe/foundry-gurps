@@ -1,0 +1,8 @@
+{{!-- Подстановка заглушек «@Кто@» при добавлении предмета, как askForDogs в GMentor --}}
+<p class="hint">{{localize "GMENTOR.PlaceholdersHint"}}</p>
+{{#each placeholders}}
+<div class="form-group">
+  <label>{{this}}</label>
+  <input type="text" name="placeholder-{{@index}}" {{#if @first}}autofocus{{/if}}>
+</div>
+{{/each}}

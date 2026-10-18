@@ -61,6 +61,30 @@
       }
     }
   },
+  "packs": [
+    {
+      "name": "advantages",
+      "label": "Преимущества и недостатки",
+      "path": "packs/advantages",
+      "type": "Item",
+      "system": "gmentor",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "skills",
+      "label": "Умения",
+      "path": "packs/skills",
+      "type": "Item",
+      "system": "gmentor",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    }
+  ],
   "initiative": "@speed + @dx / 100",
   "grid": {
     "distance": 1,

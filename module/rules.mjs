@@ -114,16 +114,64 @@ export function skillLevel(base, difficulty, points) {
 export const SELF_CONTROL_MULTIPLIER = { 6: 2, 9: 1.5, 12: 1, 15: 0.5 };
 
 /**
- * Стоимость преимущества или недостатка с уровнями, улучшениями и ограничениями (B101, B110).
- * Улучшения и ограничения складываются, итог не ниже −80%.
+ * Стоимость преимущества или недостатка с уровнями, улучшениями и ограничениями (B101, B110), как calcAdvantage
+ * в GMentor. Модификатор бывает в процентах, в очках или множителем; affects задаёт, на что он действует:
+ * на всю цену (total), только на базовую (base) или только на цену уровней (levels).
+ * Проценты на базу и на уровни складываются отдельно, каждая сумма не ниже −80%.
  */
 export function traitCost({ basePoints, pointsPerLevel, levels, cr, modifiers, roundDown }) {
-  const percent = modifiers.filter(m => m.enabled).reduce((sum, m) => sum + m.value, 0);
-  const raw = (basePoints + pointsPerLevel * levels) * (1 + Math.max(percent, -80) / 100)
-    * (SELF_CONTROL_MULTIPLIER[cr] ?? 1);
+  let base = basePoints;
+  let perLevel = pointsPerLevel;
+  let basePercent = 0;
+  let levelPercent = 0;
+  let multiplier = SELF_CONTROL_MULTIPLIER[cr] ?? 1;
+  for ( const modifier of modifiers ) {
+    if ( !modifier.enabled ) continue;
+    const value = modifier.value * modifier.levels;
+    if ( modifier.costType === "multiplier" ) multiplier *= value;
+    else if ( modifier.costType === "points" ) {
+      if ( modifier.affects === "levels" ) perLevel += value;
+      else base += value;
+    }
+    else {
+      if ( modifier.affects !== "levels" ) basePercent += value;
+      if ( modifier.affects !== "base" ) levelPercent += value;
+    }
+  }
+  const withPercent = (points, percent) => points * (1 + Math.max(percent, -80) / 100);
+  const raw = (withPercent(base, basePercent) + withPercent(perLevel * levels, levelPercent)) * multiplier;
   // Убираем погрешность дробей (10 * 1.1 = 11.000000000000002), иначе ceil даст 12
   const cost = Math.round(raw * 1000) / 1000;
   return roundDown ? Math.floor(cost) : Math.ceil(cost);
+}
+
+/**
+ * Характеристики, к которым черта даёт бонус (attribute_bonus в библиотеке GMentor).
+ * Ключи совпадают с CharacterData#bonuses. vision, hearing, tasteSmell, touch — чувства (B358).
+ */
+export const BONUS_TARGETS = ["st", "dx", "iq", "ht", "hp", "fp", "will", "per", "speed", "move", "sm",
+  "dodge", "parry", "block", "fright", "strikingSt", "liftingSt", "vision", "hearing", "tasteSmell", "touch"];
+
+/**
+ * Английский идентификатор предмета: "Fast-Draw" → "fast-draw", "Sex Appeal" → "sex-appeal".
+ * По нему черты находят умения и заклинания, которым дают бонус, независимо от русского названия.
+ */
+export function toIdentifier(text) {
+  return String(text).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+// Способы сравнения названий из библиотеки GMentor/GCS (skill_bonus, spell_bonus)
+export const COMPARE = ["is", "is anything", "starts with", "contains", "is not"];
+
+/** Сравнение строки с образцом одним из способов COMPARE. Строки сравниваются как есть, нормализует вызывающий. */
+export function compareText(value, pattern, compare) {
+  switch ( compare ) {
+    case "is anything": return true;
+    case "starts with": return value.startsWith(pattern);
+    case "contains": return value.includes(pattern);
+    case "is not": return value !== pattern;
+    default: return value === pattern;
+  }
 }
 
 /**
