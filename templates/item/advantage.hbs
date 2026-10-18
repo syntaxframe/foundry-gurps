@@ -1,0 +1,43 @@
+<section class="body">
+  <div class="form-group">
+    <label>{{localize "GMENTOR.BasePoints"}}</label>
+    <input type="number" name="system.basePoints" value="{{system.basePoints}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.PointsPerLevel"}}</label>
+    <input type="number" name="system.pointsPerLevel" value="{{system.pointsPerLevel}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Levels"}}</label>
+    <input type="number" name="system.levels" value="{{system.levels}}" min="0">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.SelfControl"}}</label>
+    <select name="system.cr" data-dtype="Number">{{selectOptions choices.cr selected=system.cr}}</select>
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Quirk"}}</label>
+    <input type="checkbox" name="system.quirk" {{checked system.quirk}}>
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.RoundDown"}}</label>
+    <input type="checkbox" name="system.roundDown" {{checked system.roundDown}}>
+  </div>
+
+  <h4>
+    {{localize "GMENTOR.Modifiers"}}
+    <a data-action="addModifier" data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
+  </h4>
+  <table class="modifiers">
+    {{#each system.modifiers}}
+    <tr>
+      <td><input type="checkbox" name="system.modifiers.{{@index}}.enabled" {{checked enabled}}></td>
+      <td><input type="text" name="system.modifiers.{{@index}}.name" value="{{name}}" placeholder="{{localize "Name"}}"></td>
+      <td class="percent"><input type="number" name="system.modifiers.{{@index}}.value" value="{{value}}">%</td>
+      <td><a data-action="deleteModifier" data-index="{{@index}}"><i class="fa-solid fa-trash" inert></i></a></td>
+    </tr>
+    {{/each}}
+  </table>
+
+  <p class="result">{{localize "GMENTOR.Cost"}}: <strong>{{system.cost}}</strong></p>
+</section>

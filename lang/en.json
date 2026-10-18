@@ -1,0 +1,413 @@
+{
+  "TYPES": {
+    "Actor": {
+      "character": "Character"
+    },
+    "Item": {
+      "advantage": "Trait",
+      "skill": "Skill",
+      "spell": "Spell",
+      "equipment": "Equipment"
+    }
+  },
+  "GMENTOR": {
+    "Sheet": {
+      "Character": "GMentor Character Sheet",
+      "Item": "GMentor Item Sheet"
+    },
+    "Tab": {
+      "stats": "Stats",
+      "traits": "Traits",
+      "skills": "Skills",
+      "equipment": "Equipment",
+      "notes": "Notes"
+    },
+    "Attribute": {
+      "label": "Attribute",
+      "st": "Strength (ST)",
+      "dx": "Dexterity (DX)",
+      "iq": "Intelligence (IQ)",
+      "ht": "Health (HT)",
+      "will": "Will",
+      "per": "Perception"
+    },
+    "AttributeAbbr": {
+      "st": "ST",
+      "dx": "DX",
+      "iq": "IQ",
+      "ht": "HT",
+      "will": "Will",
+      "per": "Per"
+    },
+    "Difficulty": {
+      "label": "Difficulty",
+      "E": "Easy",
+      "A": "Average",
+      "H": "Hard",
+      "VH": "Very Hard"
+    },
+    "Defense": {
+      "label": "Defense",
+      "none": "None",
+      "parry": "Parry",
+      "block": "Block"
+    },
+    "State": {
+      "label": "State",
+      "equipped": "Equipped",
+      "carried": "Carried",
+      "stored": "Not carried"
+    },
+    "Enc": {
+      "0": "None (0)",
+      "1": "Light (-1)",
+      "2": "Medium (-2)",
+      "3": "Heavy (-3)",
+      "4": "X-Heavy (-4)",
+      "5": "Overloaded"
+    },
+    "Points": {
+      "label": "Points",
+      "total": "Starting points",
+      "earned": "Earned",
+      "available": "Unspent",
+      "attributes": "Attributes",
+      "spells": "Spells"
+    },
+    "Roll": {
+      "Roll": "Roll",
+      "Modifier": "Modifier",
+      "Target": "Against",
+      "Margin": "margin",
+      "Damage": "Damage",
+      "critSuccess": "Critical success",
+      "success": "Success",
+      "failure": "Failure",
+      "critFailure": "Critical failure",
+      "BadDamage": "Cannot parse damage \"{damage}\""
+    },
+    "Spell": {
+      "college": "College",
+      "class": "Class",
+      "cost": "Cost",
+      "maintain": "Maintain",
+      "time": "Time",
+      "duration": "Duration"
+    },
+    "TL": "TL",
+    "SM": "SM",
+    "SMHint": "Size Modifier. Discounts ST and HP (B15)",
+    "Fright": "Fright Check",
+    "Thrust": "Thrust",
+    "Swing": "Swing",
+    "Dodge": "Dodge",
+    "Weapons": "Ready weapons",
+    "Weapon": "Weapon",
+    "Carried": "Carried",
+    "Overloaded": "Overloaded: above X-Heavy",
+    "Kg": "kg",
+    "Advantages": "Advantages",
+    "Disadvantages": "Disadvantages",
+    "Quirks": "Quirks",
+    "Quirk": "Quirk",
+    "Skills": "Skills",
+    "Skill": "Skill",
+    "Spells": "Spells",
+    "Equipment": "Equipment",
+    "Levels": "Levels",
+    "CR": "CR",
+    "SelfControl": "Self-control",
+    "Cost": "Cost",
+    "BasePoints": "Base points",
+    "PointsPerLevel": "Per level",
+    "RoundDown": "Round down",
+    "Modifiers": "Enhancements and limitations",
+    "Specialization": "Specialization",
+    "Bonus": "Bonus",
+    "BonusHint": "Level bonus from Talents etc.",
+    "DefenseModHint": "Defense modifier (e.g. -1 for some weapons)",
+    "Relative": "Rel.",
+    "Level": "Level",
+    "Quantity": "Qty",
+    "Weight": "Weight",
+    "Value": "Value",
+    "Reach": "Reach",
+    "MinST": "Min ST",
+    "DamageHint": "As in the book: sw+2 cut, thr imp, 2d-1 cr",
+    "SkillHint": "Name of the character's skill used to attack",
+    "Reference": "Reference",
+    "Add": "Add",
+    "Edit": "Edit",
+    "Delete": "Delete",
+    "Profile": {
+      "name": "Character name",
+      "player": "Player",
+      "campaign": "Campaign",
+      "title": "Title",
+      "age": "Age",
+      "birthday": "Birthday",
+      "eyes": "Eyes",
+      "hair": "Hair",
+      "skin": "Skin",
+      "handedness": "Handedness",
+      "height": "Height",
+      "weight": "Weight",
+      "gender": "Gender",
+      "race": "Race",
+      "religion": "Religion",
+      "notes": "Notes",
+      "changePhoto": "Change photo"
+    },
+    "Char": {
+      "st": {
+        "abbr": "ST",
+        "name": "Strength"
+      },
+      "dx": {
+        "abbr": "DX",
+        "name": "Dexterity"
+      },
+      "iq": {
+        "abbr": "IQ",
+        "name": "Intelligence"
+      },
+      "ht": {
+        "abbr": "HT",
+        "name": "Health"
+      },
+      "hp": {
+        "abbr": "HP",
+        "name": "Hit Points"
+      },
+      "move": {
+        "abbr": "Move",
+        "name": "Yards per turn"
+      },
+      "speed": {
+        "abbr": "Speed",
+        "name": "Basic Speed"
+      },
+      "will": {
+        "abbr": "Will",
+        "name": "Will"
+      },
+      "per": {
+        "abbr": "Per",
+        "name": "Perception"
+      },
+      "fp": {
+        "abbr": "FP",
+        "name": "Fatigue Points"
+      }
+    },
+    "HPState": {
+      "reeling": "Reeling: half Move and Dodge",
+      "collapse": "Collapse: HT roll every turn",
+      "death1": "1st death check",
+      "death2": "2nd death check",
+      "death3": "3rd death check",
+      "death4": "4th death check",
+      "dead": "Dead"
+    },
+    "FPState": {
+      "tired": "Tired: half Move, Dodge and ST",
+      "collapse": "Spends HP, Will roll for any action",
+      "unconscious": "Unconscious"
+    },
+    "Wounds": "Wounds",
+    "Fatigue": "Fatigue lost",
+    "Left": "Left",
+    "LostHint": "Amount lost. Expressions allowed: 3+4+2",
+    "LimitWarning": "Outside recommended limits (B16–B17)",
+    "Punch": "Punch",
+    "Kick": "Kick",
+    "EncNote": "encumbrance",
+    "ExhaustedNote": "wounds or fatigue",
+    "MoveNow": "Now",
+    "DR": "Damage Resistance (DR)",
+    "LocationRoll": "3d6 roll for random hit (right / left)",
+    "LocationToHit": "Modifier to hit",
+    "Location": {
+      "skull": "Skull",
+      "face": "Face",
+      "eyes": "Eyes",
+      "neck": "Neck",
+      "torso": "Torso",
+      "groin": "Groin",
+      "arms": "Arms",
+      "hands": "Hands",
+      "legs": "Legs",
+      "feet": "Feet"
+    },
+    "Conditions": "Conditions",
+    "ConditionsAdd": "Add temporary condition",
+    "ConditionStanding": "Posture — Standing",
+    "ConditionGroup": {
+      "posture": "Postures",
+      "injury": "Injuries",
+      "irritating": "Irritating conditions",
+      "incapacitating": "Incapacitating conditions",
+      "mortal": "Mortal conditions"
+    },
+    "Condition": {
+      "crouching": {
+        "name": "Posture — Crouching",
+        "notes": "Melee attacks −2, ranged attacks on you −2, Move ×2/3"
+      },
+      "kneeling": {
+        "name": "Posture — Kneeling",
+        "notes": "Melee attacks −2, active defenses −2, ranged attacks on you −2, Move ×1/3"
+      },
+      "sitting": {
+        "name": "Posture — Sitting",
+        "notes": "Melee attacks −2, active defenses −2, ranged attacks on you −2, Move 0"
+      },
+      "crawling": {
+        "name": "Posture — Crawling",
+        "notes": "Melee attacks −4 (C), active defenses −3, ranged attacks on you −2, Move ×1/3"
+      },
+      "lying": {
+        "name": "Posture — Lying Down",
+        "notes": "Melee attacks −4 (C), active defenses −3, ranged attacks on you −2, Move 1"
+      },
+      "stunned": {
+        "name": "Stunned",
+        "notes": "−4 to active defenses, HT roll at end of turn to recover"
+      },
+      "mentalStun": {
+        "name": "Mental Stun",
+        "notes": "−4 to active defenses, IQ roll at end of turn to recover"
+      },
+      "bleeding": {
+        "name": "Bleeding",
+        "notes": "HT roll every minute (−1 per 5 HP lost)"
+      },
+      "unconsciousInjury": {
+        "name": "Unconsciousness (injury)",
+        "notes": ""
+      },
+      "crippledHand": {
+        "name": "Crippled Hand",
+        "notes": "−4 to two-handed tasks done one-handed"
+      },
+      "crippledArm": {
+        "name": "Crippled Arm",
+        "notes": "−4 to two-handed tasks done one-handed"
+      },
+      "crippledFoot": {
+        "name": "Crippled Foot",
+        "notes": "−3 to leg-based and melee weapon skills, Move halved"
+      },
+      "crippledLeg": {
+        "name": "Crippled Leg",
+        "notes": "−6 to leg-based and melee weapon skills, Move reduced to 2"
+      },
+      "crippledEye": {
+        "name": "Crippled Eye",
+        "notes": "−1 DX in combat and hand-eye tasks, −3 to ranged attacks (unless Aimed) and fast vehicles"
+      },
+      "starvation": {
+        "name": "Starvation",
+        "notes": "−1 FP per missed meal"
+      },
+      "dehydration": {
+        "name": "Dehydration",
+        "notes": "1 FP every 8 hours; under a liter of water a day: 1 FP and −1 HP daily"
+      },
+      "missedSleep": {
+        "name": "Missed Sleep",
+        "notes": ""
+      },
+      "drowsy": {
+        "name": "Drowsy",
+        "notes": "Will roll every 2 hours to stay awake. DX, IQ, self-control −2"
+      },
+      "coughing": {
+        "name": "Coughing",
+        "notes": "DX −3, IQ −1, no Stealth"
+      },
+      "sneezing": {
+        "name": "Sneezing",
+        "notes": "DX −3, IQ −1, no Stealth"
+      },
+      "tipsy": {
+        "name": "Tipsy",
+        "notes": "DX, IQ −1, self-control −2 (except fear)"
+      },
+      "drunk": {
+        "name": "Drunk",
+        "notes": "DX, IQ −2, self-control −4 (except fear)"
+      },
+      "euphoria": {
+        "name": "Euphoria",
+        "notes": "DX, IQ, self-control −3"
+      },
+      "nauseated": {
+        "name": "Nauseated",
+        "notes": "−2 to all attribute and skill rolls, −1 to active defenses"
+      },
+      "painModerate": {
+        "name": "Pain, Moderate",
+        "notes": "DX, IQ, self-control −2"
+      },
+      "painSevere": {
+        "name": "Pain, Severe",
+        "notes": "DX, IQ, self-control −4"
+      },
+      "painTerrible": {
+        "name": "Pain, Terrible",
+        "notes": "DX, IQ, self-control −6"
+      },
+      "agony": {
+        "name": "Agony",
+        "notes": ""
+      },
+      "choking": {
+        "name": "Choking",
+        "notes": ""
+      },
+      "daze": {
+        "name": "Daze",
+        "notes": ""
+      },
+      "ecstasy": {
+        "name": "Ecstasy",
+        "notes": ""
+      },
+      "hallucinating": {
+        "name": "Hallucinating",
+        "notes": ""
+      },
+      "paralysis": {
+        "name": "Paralysis",
+        "notes": ""
+      },
+      "retching": {
+        "name": "Retching",
+        "notes": ""
+      },
+      "seizure": {
+        "name": "Seizure",
+        "notes": ""
+      },
+      "unconscious": {
+        "name": "Unconsciousness (no injury)",
+        "notes": ""
+      },
+      "mortalWound": {
+        "name": "Mortal Wound",
+        "notes": "HT roll every half hour to avoid death"
+      },
+      "coma": {
+        "name": "Coma",
+        "notes": ""
+      },
+      "heartAttack": {
+        "name": "Heart Attack",
+        "notes": ""
+      }
+    },
+    "Apply": "Apply",
+    "ConditionDescription": "Full description"
+  }
+}

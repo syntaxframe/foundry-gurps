@@ -1,0 +1,30 @@
+<section class="tab equipment {{tab.cssClass}}" data-group="{{tab.group}}" data-tab="{{tab.id}}">
+  <h3>
+    {{localize "GMENTOR.Equipment"}}
+    <a class="add" data-action="createItem" data-type="equipment" data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
+  </h3>
+  <table class="item-table">
+    <thead><tr>
+      <th class="name">{{localize "Name"}}</th>
+      <th>{{localize "GMENTOR.Quantity"}}</th>
+      <th>{{localize "GMENTOR.Weight"}}</th>
+      <th>{{localize "GMENTOR.Value"}}</th>
+      <th>{{localize "GMENTOR.State.label"}}</th>
+      <th></th>
+    </tr></thead>
+    <tbody>
+      {{#each equipment}}
+      <tr data-item-id="{{id}}" class="{{system.state}}">
+        <td class="name"><a data-action="editItem">{{name}}</a></td>
+        <td>{{system.quantity}}</td>
+        <td>{{system.weight}}</td>
+        <td>{{system.value}}</td>
+        <td>{{localize (concat "GMENTOR.State." system.state)}}</td>
+        <td>{{> "systems/gmentor/templates/actor/item-row.hbs"}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+  <p>{{localize "GMENTOR.Carried"}}: {{system.encumbrance.weight}} {{localize "GMENTOR.Kg"}} —
+    {{localize (concat "GMENTOR.Enc." system.encumbrance.level)}}</p>
+</section>

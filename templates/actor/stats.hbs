@@ -1,0 +1,138 @@
+{{#*inline "charRow"}}
+<div class="char-row {{#if warning}}warning{{/if}} {{#if temporary}}temporary{{/if}}">
+  {{#if roll}}
+  <a class="char-label rollable" data-action="roll" data-label="{{localize name}}" data-value="{{value}}">
+  {{else}}
+  <span class="char-label">
+  {{/if}}
+    <span class="abbr">{{localize abbr}}</span>
+    <span class="name">{{localize name}}</span>
+  {{#if roll}}</a>{{else}}</span>{{/if}}
+  <input class="char-value" type="number" name="{{path}}" value="{{value}}" step="{{step}}"
+         {{#if warning}}data-tooltip="GMENTOR.LimitWarning"{{/if}}>
+  <span class="char-side">
+    <span class="char-cost">{{cost}}</span>
+    {{#with note}}
+    {{#if roll}}
+    <a class="char-note rollable" data-action="roll" data-label="{{localize label}}" data-value="{{value}}">{{localize label}} {{value}}</a>
+    {{else}}
+    <span class="char-note warning">{{localize label}} {{value}}</span>
+    {{/if}}
+    {{/with}}
+  </span>
+</div>
+{{/inline}}
+
+{{#*inline "pool"}}
+<div class="pool {{class}}">
+  <label class="pool-lost" data-tooltip="{{localize "GMENTOR.Left"}} {{pool.value}} / {{pool.max}}. {{localize "GMENTOR.LostHint"}}">
+    <span>{{localize title}}</span>
+    <input type="text" name="{{name}}" value="{{#if pool.lost}}{{pool.lost}}{{/if}}">
+  </label>
+  <ol class="thresholds">
+    {{#each pool.thresholds}}
+    <li class="{{#if reached}}reached{{/if}}"><b>{{value}}</b><span>{{localize (concat ../prefix key)}}</span></li>
+    {{/each}}
+  </ol>
+</div>
+{{/inline}}
+
+<section class="tab stats {{tab.cssClass}}" data-group="{{tab.group}}" data-tab="{{tab.id}}">
+  <div class="characteristics">
+    <div class="char-column attributes">
+      {{#each attributeRows}}{{> charRow}}{{/each}}
+    </div>
+
+    <div class="char-column secondary">
+      {{#each secondaryRows}}{{> charRow}}{{/each}}
+    </div>
+
+    <div class="condition">
+      {{> pool title="GMENTOR.Wounds" name="hpLost" pool=system.hp prefix="GMENTOR.HPState." class="wounds"}}
+
+      <div class="encumbrance-row">
+        {{#each system.encumbrance.thresholds}}
+        <div class="{{#if active}}active{{/if}}">
+          <span>{{localize (concat "GMENTOR.Enc." level)}}</span>
+          <b>{{numberFormat weight decimals=1}}</b> {{localize "GMENTOR.Kg"}}
+        </div>
+        {{/each}}
+        {{#if (gt system.encumbrance.level 4)}}<div class="warning">{{localize "GMENTOR.Overloaded"}}</div>{{/if}}
+      </div>
+
+      {{> pool title="GMENTOR.Fatigue" name="fpLost" pool=system.fp prefix="GMENTOR.FPState." class="fatigue"}}
+    </div>
+  </div>
+
+  <div class="card combat">
+    <div class="damage-row">
+      {{#each damageTiles}}
+      <a class="tile rollable" data-action="rollDamage" data-label="{{localize label}}" data-damage="{{damage}}">
+        <span class="tile-label">{{localize label}}</span>
+        <b>{{value}}</b>
+      </a>
+      {{/each}}
+      <span class="spacer"></span>
+      {{#each system.defenses}}
+      <a class="tile defense rollable {{#if (lookup @root.temporary type)}}temporary{{/if}}" data-action="roll" data-label="{{localize (concat "GMENTOR.Defense." type)}} ({{item.name}})" data-value="{{value}}">
+        <span class="tile-label">{{localize (concat "GMENTOR.Defense." type)}} · {{item.name}}</span>
+        <b>{{value}}</b>
+      </a>
+      {{/each}}
+      <a class="tile defense rollable {{#if temporary.dodge}}temporary{{/if}}" data-action="roll" data-label="{{localize "GMENTOR.Dodge"}}" data-value="{{system.dodge}}">
+        <span class="tile-label">{{localize "GMENTOR.Dodge"}}</span>
+        <b>{{system.dodge}}</b>
+        {{#if system.encumbrance.level}}<span class="tile-note">{{localize "GMENTOR.EncNote"}} −{{system.encumbrance.level}}</span>{{/if}}
+        {{#if system.exhausted}}<span class="tile-note">{{system.exhausted.label}} {{localize "GMENTOR.ExhaustedNote"}}</span>{{/if}}
+      </a>
+    </div>
+
+    <div class="locations">
+      {{#each system.locations}}
+      <div class="location">
+        <span class="loc-name">{{localize (concat "GMENTOR.Location." key)}}</span>
+        <b class="loc-dr" data-tooltip="GMENTOR.DR">{{dr}}</b>
+        {{#if roll}}<span class="loc-roll" data-tooltip="GMENTOR.LocationRoll">{{roll}}</span>{{/if}}
+        <span class="loc-hit" data-tooltip="GMENTOR.LocationToHit">{{toHit}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+
+  <div class="card conditions">
+    <h3>
+      {{localize "GMENTOR.Conditions"}}
+      <a class="add" data-action="addCondition" data-tooltip="GMENTOR.ConditionsAdd"><i class="fa-solid fa-plus" inert></i></a>
+    </h3>
+    {{#each conditions}}
+    <div class="condition-row {{#if expanded}}expanded{{/if}}" data-effect-id="{{id}}">
+      <img src="{{img}}" alt="">
+      {{#if description}}
+      <a class="condition-name" data-action="toggleConditionDescription" data-tooltip="GMENTOR.ConditionDescription">{{name}}</a>
+      {{else}}
+      <span class="condition-name">{{name}}</span>
+      {{/if}}
+      <span class="condition-notes">{{notes}}</span>
+      <span class="condition-ref">{{reference}}</span>
+      <a class="condition-remove" data-action="removeCondition" data-tooltip="GMENTOR.Delete"><i class="fa-solid fa-xmark" inert></i></a>
+      {{#if description}}<div class="condition-desc">{{{description}}}</div>{{/if}}
+    </div>
+    {{/each}}
+  </div>
+
+  {{#if weapons.length}}
+  <div class="card weapons">
+    <h3>{{localize "GMENTOR.Weapons"}}</h3>
+    <table class="item-table">
+      {{#each weapons}}
+      <tr data-item-id="{{id}}">
+        <td class="name">{{name}}</td>
+        <td>{{#if (ne system.skillLevel null)}}<a class="rollable" data-action="roll" data-label="{{name}}" data-value="{{system.skillLevel}}">{{system.skillLevel}}</a>{{else}}—{{/if}}</td>
+        <td><a class="rollable" data-action="rollDamage" data-label="{{name}}" data-damage="{{system.damage}}">{{system.damage}}</a></td>
+        <td>{{system.reach}}</td>
+      </tr>
+      {{/each}}
+    </table>
+  </div>
+  {{/if}}
+</section>

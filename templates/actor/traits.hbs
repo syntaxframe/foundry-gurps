@@ -1,0 +1,38 @@
+{{#*inline "traitList"}}
+<h3>
+  {{localize title}}
+  <a class="add" data-action="createItem" data-type="advantage" data-base-points="{{points}}" {{#if quirk}}data-quirk="true"{{/if}}
+     data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
+</h3>
+<table class="item-table">
+  <thead><tr>
+    <th class="name">{{localize "Name"}}</th>
+    <th>{{localize "GMENTOR.Levels"}}</th>
+    <th data-tooltip="GMENTOR.SelfControl">{{localize "GMENTOR.CR"}}</th>
+    <th>{{localize "GMENTOR.Cost"}}</th>
+    <th></th>
+  </tr></thead>
+  <tbody>
+    {{#each items}}
+    <tr data-item-id="{{id}}">
+      <td class="name"><a data-action="editItem">{{name}}</a></td>
+      <td>{{#if system.levels}}{{system.levels}}{{/if}}</td>
+      <td>
+        {{#if system.cr}}
+        <a class="rollable" data-action="roll" data-label="{{name}}" data-value="{{system.crTarget}}">{{system.cr}}</a>
+        {{#if (ne system.crTarget system.cr)}}<span class="warning">→ {{system.crTarget}}</span>{{/if}}
+        {{/if}}
+      </td>
+      <td>{{system.cost}}</td>
+      <td>{{> "systems/gmentor/templates/actor/item-row.hbs"}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+{{/inline}}
+
+<section class="tab traits {{tab.cssClass}}" data-group="{{tab.group}}" data-tab="{{tab.id}}">
+  {{> traitList title="GMENTOR.Advantages" items=advantages points=10}}
+  {{> traitList title="GMENTOR.Disadvantages" items=disadvantages points=-10}}
+  {{> traitList title="GMENTOR.Quirks" items=quirks points=-1 quirk=true}}
+</section>

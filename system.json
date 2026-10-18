@@ -1,0 +1,85 @@
+{
+  "id": "gmentor",
+  "title": "GURPS (GMentor)",
+  "description": "GURPS 4e по мотивам листа персонажа GMentor (gmentor.ru).",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "cat"
+    }
+  ],
+  "esmodules": [
+    "gmentor.mjs"
+  ],
+  "styles": [
+    "styles/gmentor.css"
+  ],
+  "languages": [
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "character": {
+        "htmlFields": [
+          "notes"
+        ]
+      }
+    },
+    "Item": {
+      "advantage": {
+        "htmlFields": [
+          "description"
+        ]
+      },
+      "skill": {
+        "htmlFields": [
+          "description"
+        ]
+      },
+      "spell": {
+        "htmlFields": [
+          "description"
+        ]
+      },
+      "equipment": {
+        "htmlFields": [
+          "description"
+        ]
+      }
+    }
+  },
+  "initiative": "@speed + @dx / 100",
+  "grid": {
+    "distance": 1,
+    "units": "м"
+  },
+  "primaryTokenAttribute": "hp",
+  "secondaryTokenAttribute": "fp",
+  "flags": {
+    "hotReload": {
+      "extensions": [
+        "css",
+        "hbs",
+        "json"
+      ],
+      "paths": [
+        "styles",
+        "templates",
+        "lang"
+      ]
+    }
+  }
+}

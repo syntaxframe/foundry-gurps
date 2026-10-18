@@ -1,0 +1,37 @@
+<div class="conditions-groups">
+  {{#each groups}}
+  <section class="condition-group">
+    <h4>{{localize label}}</h4>
+    {{#if radio}}
+    <div class="condition-item">
+    <label class="condition-option">
+      <input type="radio" name="posture" value="" {{checked @root.standing}}>
+      <img src="icons/svg/walk.svg" alt="">
+      <span class="condition-name">{{localize "GMENTOR.ConditionStanding"}}</span>
+      <span class="condition-notes"></span>
+      <span class="condition-ref"></span>
+    </label>
+    </div>
+    {{/if}}
+    {{#each conditions}}
+    <div class="condition-item">
+      <label class="condition-option">
+        {{#if ../radio}}
+        <input type="radio" name="posture" value="{{id}}" {{checked active}}>
+        {{else}}
+        <input type="checkbox" name="{{id}}" {{checked active}}>
+        {{/if}}
+        <img src="{{img}}" alt="">
+        <span class="condition-name">{{localize name}}</span>
+        <span class="condition-notes">{{localize notes}}</span>
+        <span class="condition-ref">{{flags.gmentor.reference}}</span>
+      </label>
+      {{#if description}}
+      <button type="button" class="condition-info" data-tooltip="GMENTOR.ConditionDescription"><i class="fa-solid fa-circle-info" inert></i></button>
+      <div class="condition-desc">{{{description}}}</div>
+      {{/if}}
+    </div>
+    {{/each}}
+  </section>
+  {{/each}}
+</div>

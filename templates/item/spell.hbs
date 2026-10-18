@@ -1,0 +1,33 @@
+<section class="body">
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Difficulty.label"}}</label>
+    <select name="system.difficulty">{{selectOptions choices.difficulty selected=system.difficulty localize=true}}</select>
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Points.label"}}</label>
+    <input type="number" name="system.points" value="{{system.points}}" min="0">
+  </div>
+  <div class="form-group">
+    <label data-tooltip="GMENTOR.BonusHint">{{localize "GMENTOR.Bonus"}}</label>
+    <input type="number" name="system.bonus" value="{{system.bonus}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Spell.college"}}</label>
+    <input type="text" name="system.college" value="{{system.college}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Spell.class"}}</label>
+    <input type="text" name="system.spellClass" value="{{system.spellClass}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Spell.cost"}} / {{localize "GMENTOR.Spell.maintain"}}</label>
+    <input type="text" name="system.castingCost" value="{{system.castingCost}}">
+    <input type="text" name="system.maintain" value="{{system.maintain}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Spell.time"}} / {{localize "GMENTOR.Spell.duration"}}</label>
+    <input type="text" name="system.castingTime" value="{{system.castingTime}}">
+    <input type="text" name="system.duration" value="{{system.duration}}">
+  </div>
+  {{#if (ne system.level null)}}<p class="result">{{localize "GMENTOR.Level"}}: <strong>{{system.level}}</strong></p>{{/if}}
+</section>

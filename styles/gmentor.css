@@ -1,0 +1,856 @@
+/* Всё внутри .gmentor, чтобы не задевать интерфейс Foundry и другие системы */
+
+/* Roboto Condensed, как в GMentor. Лежит в системе, чтобы работать без интернета (лицензия OFL, fonts/OFL.txt) */
+@font-face {
+  font-family: "GMentor Roboto Condensed";
+  src: url("../fonts/roboto-condensed-cyrillic.woff2") format("woff2");
+  font-weight: 300 700;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "GMentor Roboto Condensed";
+  src: url("../fonts/roboto-condensed-latin.woff2") format("woff2");
+  font-weight: 300 700;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Палитра GMentor. Лист всегда светлый (классы themed theme-light в DEFAULT_OPTIONS) */
+.gmentor {
+  --gm-font: "GMentor Roboto Condensed", "Roboto Condensed", sans-serif;
+  --gm-text: #000;
+  --gm-bg: #fff;
+  --gm-frame: #999;
+  --gm-line: #d6d6d6;
+  --gm-dim: #999;
+  --gm-faint: #adadad;
+  --gm-cost: #bbb;
+  --gm-accent: #4e98e0;
+  --gm-warn: #e00;
+}
+
+/* Чисто белый фон: светлая тема Foundry рисует на окне текстуру, убираем её */
+.gmentor.application {
+  background: var(--gm-bg);
+}
+
+.gmentor .window-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--gm-bg);
+  color: var(--gm-text);
+  font-family: var(--gm-font);
+  font-weight: 400;
+}
+
+/* Поля ввода без заливки и рамок Foundry: значение синее, фокус — синяя обводка */
+.gmentor .window-content :is(input, select, textarea) {
+  font-family: var(--gm-font);
+  color: var(--gm-accent);
+  background: none;
+  box-shadow: none;
+}
+
+.gmentor .window-content :is(input, select, textarea):focus {
+  outline: 2px solid var(--gm-accent);
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+.gmentor .window-content :is(h1, h2, h3, h4) {
+  font-family: var(--gm-font);
+  font-weight: 400;
+  color: var(--gm-dim);
+  border: none;
+  text-shadow: none;
+}
+
+/* Вкладки: как tabs в GMentor — подчёркивание активной синей полосой */
+.gmentor .sheet-tabs {
+  border-block: none;
+  border-bottom: 1px solid var(--gm-line);
+  gap: 0;
+}
+
+.gmentor .sheet-tabs a {
+  padding: 0.25rem 0.75rem;
+  border-bottom: 3px solid transparent;
+  color: var(--gm-dim);
+  font-family: var(--gm-font);
+  text-shadow: none;
+}
+
+.gmentor .sheet-tabs a.active {
+  border-bottom-color: var(--gm-accent);
+  color: var(--gm-text);
+}
+
+.gmentor .sheet-header {
+  flex: 0 0 auto;
+}
+
+/* Строка очков над профилем, как в GMentor */
+.gmentor .points-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 0 0.5rem 0.25rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .points-bar input {
+  width: 3.5rem;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gm-accent);
+  font-size: 1.1rem;
+}
+
+.gmentor .points-bar strong {
+  color: var(--gm-text);
+  font-size: 1.1rem;
+}
+
+.gmentor .points-bar .details {
+  font-size: 0.75em;
+}
+
+.gmentor .points-bar .details b {
+  margin-right: 0.5rem;
+  color: var(--gm-text);
+}
+
+/* Блок profile: фото слева, поля текут строками, подпись над значением */
+.gmentor .profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  min-height: 140px;
+  padding: 5px 5px 5px 135px;
+  position: relative;
+  border: 1px solid var(--gm-frame);
+}
+
+.gmentor .profile .portrait {
+  position: absolute;
+  inset: -1px auto -1px -1px;
+  width: 120px;
+  border: 1px solid var(--gm-frame);
+  /* Картинки Foundry по умолчанию белые: на сером фоне их видно */
+  background: var(--gm-line);
+  cursor: pointer;
+}
+
+.gmentor .profile .portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  border: none;
+}
+
+.gmentor .profile .field {
+  display: flex;
+  flex-direction: column;
+  margin: 2px;
+  padding: 3px;
+  border-bottom: 1px solid var(--gm-line);
+}
+
+.gmentor .profile .field span {
+  font-size: 0.75em;
+  color: var(--gm-dim);
+  white-space: nowrap;
+}
+
+.gmentor .profile .field input,
+.gmentor .profile .field textarea {
+  /* Поле растёт по содержимому, но не уже подписи */
+  field-sizing: content;
+  min-width: 2.5rem;
+  max-width: 100%;
+  height: auto;
+  min-height: 1.4em;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--gm-text);
+  text-align: left;
+}
+
+.gmentor .profile .field.number input {
+  color: var(--gm-accent);
+}
+
+.gmentor .profile .field.textarea {
+  flex: 1 0 100%;
+}
+
+.gmentor .profile .field textarea {
+  font: inherit;
+  resize: none;
+}
+
+.gmentor.item .sheet-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.gmentor .sheet-header .icon {
+  width: 48px;
+  height: 48px;
+  background: var(--gm-line);
+  cursor: pointer;
+}
+
+.gmentor.item .form-group > label {
+  font-weight: 400;
+  color: var(--gm-dim);
+}
+
+.gmentor .sheet-header .name {
+  font-size: 1.5rem;
+  height: auto;
+}
+
+.gmentor input[type="number"] {
+  width: 4rem;
+  text-align: center;
+}
+
+.gmentor .tab {
+  overflow-y: auto;
+}
+
+.gmentor .columns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.gmentor .card {
+  border: 1px solid var(--gm-frame);
+  padding: 0.25rem;
+}
+
+/*
+ * Блок характеристик как в GMentor: без рамок вокруг групп, рамка только у полей.
+ * Поля стоят вплотную (границы схлопываются через margin -1px), подписи слева снаружи.
+ * Правая панель тянется на высоту столбца атрибутов.
+ */
+.gmentor .characteristics {
+  --gm-attr-h: 52px;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  /* Высота блока — четыре поля атрибутов со схлопнутыми границами; остальные части подстраиваются */
+  grid-template-rows: calc(var(--gm-attr-h) * 4 - 3px);
+  gap: 0 1.25rem;
+  align-items: stretch;
+}
+
+.gmentor .char-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.gmentor .char-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 3.25rem 64px 2.75rem;
+  align-items: center;
+  column-gap: 0.6rem;
+}
+
+.gmentor .char-row + .char-row input.char-value {
+  margin-top: -1px;
+}
+
+.gmentor .attributes .char-row {
+  flex: 0 0 var(--gm-attr-h);
+}
+
+.gmentor .secondary .char-row {
+  flex: 1 1 0;
+  min-height: 0;
+  grid-template-columns: 5.5rem 64px 4.5rem;
+}
+
+.gmentor .char-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1;
+  color: var(--gm-dim);
+  text-decoration: none;
+}
+
+.gmentor .char-label.rollable {
+  text-decoration: none;
+}
+
+.gmentor .char-label.rollable:hover {
+  color: var(--gm-accent);
+}
+
+.gmentor .attributes .char-label .abbr {
+  font-size: 34px;
+}
+
+.gmentor .attributes .char-label .name {
+  display: none;
+}
+
+.gmentor .secondary .char-label .abbr {
+  font-size: 18px;
+}
+
+.gmentor .secondary .char-label .name {
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.gmentor .char-row input.char-value {
+  width: 64px;
+  height: calc(100% + 1px);
+  padding: 0 0.3rem;
+  border: 1px solid var(--gm-frame);
+  border-radius: 0;
+  min-height: 0;
+  line-height: 1;
+  color: var(--gm-accent);
+  text-align: left;
+  -moz-appearance: textfield;
+}
+
+/* Без стрелок у числового поля: в GMentor значение крутится колесом, у нас вводится с клавиатуры */
+.gmentor .char-row input.char-value::-webkit-inner-spin-button,
+.gmentor .char-row input.char-value::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.gmentor .attributes input.char-value {
+  font-size: 42px;
+}
+
+.gmentor .secondary input.char-value {
+  font-size: 27px;
+}
+
+.gmentor .char-row.warning input.char-value {
+  color: var(--gm-warn);
+}
+
+.gmentor .char-side {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.gmentor .char-cost {
+  color: var(--gm-cost);
+  font-size: 14px;
+}
+
+.gmentor .char-cost::before {
+  content: "[";
+  color: #e4e4e4;
+}
+
+.gmentor .char-cost::after {
+  content: "]";
+  color: #e4e4e4;
+}
+
+.gmentor .char-note {
+  font-size: 11px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+/* Правая панель: раны, нагрузка, усталость */
+.gmentor .condition {
+  display: grid;
+  grid-template-rows: 1.3fr auto 0.6fr;
+  min-height: 0;
+  min-width: 300px;
+  border: 1px solid var(--gm-frame);
+}
+
+.gmentor .pool {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  min-height: 0;
+}
+
+/* Поле потерь — в рамке 2px, как блок «Раны» в GMentor; рамка перекрывает внешнюю */
+.gmentor .pool-lost {
+  display: flex;
+  flex-direction: column;
+  margin: -1px 0 -1px -1px;
+  padding: 3px;
+  border: 2px solid var(--gm-frame);
+  font-size: 10px;
+  color: var(--gm-dim);
+}
+
+.gmentor .pool-lost input {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: none;
+  line-height: 1;
+  color: var(--gm-warn);
+  font-size: 30px;
+  text-align: center;
+}
+
+.gmentor .thresholds {
+  margin: 0;
+  padding: 4px 5px;
+  overflow: hidden;
+  list-style: none;
+  font-size: 10px;
+  line-height: 1.15;
+  color: var(--gm-faint);
+}
+
+.gmentor .thresholds li {
+  display: flex;
+  gap: 5px;
+}
+
+.gmentor .thresholds b {
+  flex: 0 0 20px;
+  text-align: right;
+  font-weight: 400;
+  color: var(--gm-text);
+}
+
+.gmentor .thresholds .reached,
+.gmentor .thresholds .reached b {
+  color: var(--gm-warn);
+}
+
+.gmentor .encumbrance-row {
+  display: flex;
+  flex-wrap: wrap;
+  border-block: 1px solid var(--gm-frame);
+}
+
+.gmentor .encumbrance-row > div {
+  flex: 1;
+  padding: 1px 2px;
+  line-height: 1.15;
+  text-align: center;
+  font-size: 12px;
+}
+
+.gmentor .encumbrance-row > div span {
+  display: block;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0.6;
+}
+
+.gmentor .encumbrance-row b {
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.gmentor .encumbrance-row > .active {
+  background: color-mix(in srgb, var(--gm-accent) 15%, transparent);
+}
+
+.gmentor .encumbrance-row > .warning {
+  flex-basis: 100%;
+  color: var(--gm-warn);
+}
+
+.gmentor .window-content h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.75rem 0 0.25rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--gm-line);
+  font-size: 1.1rem;
+}
+
+/* Таблицы как списки GMentor: без заливки и полос, строки разделены тонкой линией */
+.gmentor table {
+  width: 100%;
+  margin: 0;
+  border: none;
+  background: none;
+}
+
+.gmentor table :is(thead, tr, tr:nth-child(odd), tr:nth-child(even)) {
+  background: none;
+  border: none;
+}
+
+.gmentor table th,
+.gmentor table td {
+  padding: 3px 4px;
+  text-align: center;
+  border: none;
+  border-bottom: 1px solid var(--gm-line);
+}
+
+.gmentor table th {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--gm-dim);
+}
+
+.gmentor table td .controls a,
+.gmentor h3 .add {
+  color: #c9c9c9;
+  transition: color 0.2s;
+}
+
+.gmentor table td .controls a:hover,
+.gmentor h3 .add:hover {
+  color: var(--gm-accent);
+}
+
+.gmentor .stat-table th,
+.gmentor .item-table .name {
+  text-align: left;
+}
+
+.gmentor .stat-table .total {
+  font-weight: bold;
+}
+
+.gmentor .cost,
+.gmentor .dim {
+  opacity: 0.6;
+}
+
+.gmentor .rollable {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.gmentor .rollable:hover {
+  color: var(--gm-accent);
+  text-shadow: none;
+}
+
+.gmentor .warning {
+  color: var(--gm-warn);
+}
+
+.gmentor .item-table tr.stored {
+  opacity: 0.5;
+}
+
+.gmentor .controls {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.gmentor .notes prose-mirror,
+.gmentor .description prose-mirror {
+  min-height: 200px;
+}
+
+.gmentor.item .modifiers .percent input {
+  width: 4rem;
+}
+
+.gmentor .result {
+  font-size: 1.1rem;
+}
+
+/* Бой: строка урона и защит, под ней локации. Плитки делят ширину поровну, при нехватке места переносятся */
+.gmentor .card.combat {
+  margin-top: 0.75rem;
+  padding: 0;
+}
+
+.gmentor .damage-row,
+.gmentor .locations {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.gmentor .damage-row {
+  border-bottom: 1px solid var(--gm-frame);
+}
+
+.gmentor .tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.5rem;
+  padding: 0.25rem 0.5rem;
+  border-right: 1px solid var(--gm-frame);
+  text-decoration: none;
+}
+
+.gmentor .tile.defense {
+  border-right: none;
+  border-left: 1px solid var(--gm-frame);
+}
+
+.gmentor .tile-label {
+  font-size: 0.7rem;
+  color: var(--gm-dim);
+  white-space: nowrap;
+}
+
+.gmentor .tile b {
+  font-size: 1.4rem;
+  font-weight: normal;
+  line-height: 1.2;
+}
+
+.gmentor .tile.defense b {
+  color: var(--gm-accent);
+}
+
+.gmentor .tile-note {
+  font-size: 0.65rem;
+  color: var(--gm-warn);
+}
+
+.gmentor .tile.rollable:hover {
+  background: color-mix(in srgb, var(--gm-accent) 12%, transparent);
+  text-shadow: none;
+}
+
+.gmentor .damage-row .spacer {
+  flex: 1;
+}
+
+.gmentor .location {
+  flex: 1 0 4.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.15rem 0.25rem 0.9rem;
+  border-right: 1px solid var(--gm-frame);
+}
+
+.gmentor .location:last-child {
+  border-right: none;
+}
+
+.gmentor .loc-name {
+  font-size: 0.7rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .loc-dr {
+  font-size: 1.15rem;
+  font-weight: normal;
+}
+
+.gmentor .loc-roll,
+.gmentor .loc-hit {
+  position: absolute;
+  bottom: 1px;
+  font-size: 0.6rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .loc-roll {
+  left: 3px;
+  opacity: 0.7;
+}
+
+.gmentor .loc-hit {
+  right: 3px;
+}
+
+.gmentor .card.weapons {
+  margin-top: 0.75rem;
+}
+
+.gmentor .card.weapons h3 {
+  margin-top: 0;
+}
+
+/* Значения, изменённые состояниями, красные — как temporal в GMentor */
+.gmentor .char-row.temporary input.char-value,
+.gmentor .tile.defense.temporary b {
+  color: var(--gm-warn);
+}
+
+/* Состояния: заголовок со значком добавления, строки с иконкой, пометкой и ссылкой */
+.gmentor .card.conditions {
+  margin-top: 0.75rem;
+  padding: 0 0.5rem;
+}
+
+.gmentor .card.conditions h3 {
+  margin: 0;
+  padding: 0.3rem 0;
+  border-bottom: none;
+}
+
+.gmentor .condition-row {
+  display: grid;
+  grid-template-columns: 20px auto 1fr auto 16px;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 3px 0;
+  border-top: 1px solid var(--gm-line);
+}
+
+.gmentor .condition-row img,
+.gmentor .condition-option img {
+  width: 20px;
+  height: 20px;
+  border: none;
+  /* Иконки статусов Foundry белые: делаем их серыми на белом фоне */
+  filter: invert(0.55);
+}
+
+.gmentor .condition-notes,
+.gmentor .condition-ref {
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .condition-remove {
+  color: #c9c9c9;
+}
+
+.gmentor .condition-remove:hover {
+  color: var(--gm-warn);
+}
+
+/* Диалог выбора состояний: группы с подписью, каждое состояние — одна строка с пометкой */
+.gmentor.conditions-dialog .conditions-groups {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.gmentor .condition-group + .condition-group {
+  margin-top: 0.6rem;
+}
+
+.gmentor .condition-group h4 {
+  margin: 0 0 0.15rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--gm-line);
+  font-size: 0.95rem;
+}
+
+.gmentor .condition-option {
+  display: grid;
+  grid-template-columns: 18px 20px max-content 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.gmentor .condition-option input {
+  margin: 0;
+}
+
+.gmentor .condition-option:hover {
+  background: color-mix(in srgb, var(--gm-accent) 6%, transparent);
+}
+
+.gmentor .condition-option:has(input:checked) {
+  background: color-mix(in srgb, var(--gm-accent) 14%, transparent);
+}
+
+.gmentor .condition-option .condition-name {
+  white-space: nowrap;
+}
+
+/* Полное описание состояния: скрыто, раскрывается ⓘ в диалоге и кликом по названию на листе */
+.gmentor .condition-item {
+  display: grid;
+  grid-template-columns: 1fr 24px;
+  align-items: center;
+}
+
+.gmentor .condition-info {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c9c9c9;
+}
+
+.gmentor .condition-info:hover,
+.gmentor .condition-item.expanded .condition-info {
+  color: var(--gm-accent);
+}
+
+.gmentor .condition-desc {
+  display: none;
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0.4rem 46px;
+  padding: 0.25rem 0.6rem;
+  border-left: 2px solid var(--gm-line);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.gmentor :is(.condition-item, .condition-row).expanded .condition-desc {
+  display: block;
+}
+
+.gmentor .condition-desc :is(p, ul, h4) {
+  margin: 0 0 0.4rem;
+}
+
+.gmentor .condition-desc h4 {
+  font-size: 0.9rem;
+  color: var(--gm-text);
+}
+
+.gmentor .condition-desc hr {
+  border: none;
+  border-top: 1px solid var(--gm-line);
+}
+
+.gmentor .condition-row a.condition-name {
+  cursor: pointer;
+  text-decoration: underline dotted var(--gm-dim);
+}
+
+.gmentor .condition-row.expanded a.condition-name {
+  color: var(--gm-accent);
+}
+
+/* Сообщение в чате */
+.gmentor-roll h3 {
+  margin: 0 0 0.25rem;
+}
+
+.gmentor-roll .outcome {
+  font-weight: bold;
+}
+
+.gmentor-roll .critSuccess,
+.gmentor-roll .success {
+  color: #2a7a2a;
+}
+
+.gmentor-roll .failure,
+.gmentor-roll .critFailure {
+  color: #a82020;
+}

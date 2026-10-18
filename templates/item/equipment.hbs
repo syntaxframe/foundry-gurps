@@ -1,0 +1,37 @@
+<section class="body">
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Quantity"}}</label>
+    <input type="number" name="system.quantity" value="{{system.quantity}}" min="0">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Weight"}}, {{localize "GMENTOR.Kg"}}</label>
+    <input type="number" name="system.weight" value="{{system.weight}}" min="0" step="any">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Value"}}</label>
+    <input type="number" name="system.value" value="{{system.value}}" min="0" step="any">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.TL"}}</label>
+    <input type="text" name="system.techLevel" value="{{system.techLevel}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.State.label"}}</label>
+    <select name="system.state">{{selectOptions choices.state selected=system.state localize=true}}</select>
+  </div>
+
+  <h4>{{localize "GMENTOR.Weapon"}}</h4>
+  <div class="form-group">
+    <label data-tooltip="GMENTOR.DamageHint">{{localize "GMENTOR.Roll.Damage"}}</label>
+    <input type="text" name="system.damage" value="{{system.damage}}" placeholder="sw+2 cut">
+  </div>
+  <div class="form-group">
+    <label data-tooltip="GMENTOR.SkillHint">{{localize "GMENTOR.Skill"}}</label>
+    <input type="text" name="system.skill" value="{{system.skill}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Reach"}} / {{localize "GMENTOR.MinST"}}</label>
+    <input type="text" name="system.reach" value="{{system.reach}}" placeholder="1">
+    <input type="text" name="system.minSt" value="{{system.minSt}}" placeholder="10">
+  </div>
+</section>

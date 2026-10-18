@@ -1,0 +1,29 @@
+<section class="body">
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Specialization"}}</label>
+    <input type="text" name="system.specialization" value="{{system.specialization}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Attribute.label"}} / {{localize "GMENTOR.Difficulty.label"}}</label>
+    <select name="system.attribute">{{selectOptions choices.attribute selected=system.attribute localize=true}}</select>
+    <select name="system.difficulty">{{selectOptions choices.difficulty selected=system.difficulty localize=true}}</select>
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Points.label"}}</label>
+    <input type="number" name="system.points" value="{{system.points}}" min="0">
+  </div>
+  <div class="form-group">
+    <label data-tooltip="GMENTOR.BonusHint">{{localize "GMENTOR.Bonus"}}</label>
+    <input type="number" name="system.bonus" value="{{system.bonus}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.TL"}}</label>
+    <input type="text" name="system.techLevel" value="{{system.techLevel}}">
+  </div>
+  <div class="form-group">
+    <label>{{localize "GMENTOR.Defense.label"}}</label>
+    <select name="system.defense">{{selectOptions choices.defense selected=system.defense localize=true}}</select>
+    <input type="number" name="system.defenseMod" value="{{system.defenseMod}}" data-tooltip="GMENTOR.DefenseModHint">
+  </div>
+  {{#if (ne system.level null)}}<p class="result">{{localize "GMENTOR.Level"}}: <strong>{{system.level}}</strong></p>{{/if}}
+</section>

@@ -1,0 +1,31 @@
+<header class="sheet-header">
+  <div class="points-bar">
+    <label>{{localize "GMENTOR.Points.total"}}: <input type="number" name="system.points.total" value="{{system.points.total}}" step="5"></label>
+    <label>{{localize "GMENTOR.Points.earned"}}: <input type="number" name="system.points.earned" value="{{system.points.earned}}"></label>
+    <span>{{localize "GMENTOR.Points.available"}}: <strong class="{{#if (lt system.points.available 0)}}warning{{/if}}">{{system.points.available}}</strong></span>
+    <span class="details">
+      {{localize "GMENTOR.Points.attributes"}}: <b>{{system.points.attributes}}</b>
+      {{localize "GMENTOR.Advantages"}}: <b>{{system.points.advantages}}</b>
+      {{localize "GMENTOR.Disadvantages"}}: <b>{{system.points.disadvantages}}</b>
+      {{localize "GMENTOR.Quirks"}}: <b>{{system.points.quirks}}</b>
+      {{localize "GMENTOR.Skills"}}: <b>{{system.points.skills}}</b>
+      {{localize "GMENTOR.Points.spells"}}: <b>{{system.points.spells}}</b>
+    </span>
+  </div>
+
+  <div class="profile">
+    <div class="portrait" data-tooltip="GMENTOR.Profile.changePhoto">
+      <img src="{{actor.img}}" alt="{{actor.name}}" data-action="editImage" data-edit="img">
+    </div>
+    {{#each profile}}
+    <label class="field {{type}}" {{#if tooltip}}data-tooltip="{{tooltip}}"{{/if}}>
+      <span>{{localize label}}</span>
+      {{#if (eq type "textarea")}}
+      <textarea name="{{name}}" rows="1">{{value}}</textarea>
+      {{else}}
+      <input type="{{type}}" name="{{name}}" value="{{value}}">
+      {{/if}}
+    </label>
+    {{/each}}
+  </div>
+</header>

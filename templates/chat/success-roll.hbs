@@ -1,0 +1,8 @@
+<div class="gmentor-roll">
+  <h3>{{label}}</h3>
+  <p>
+    {{localize "GMENTOR.Roll.Target"}}: <strong>{{effective}}</strong>
+    {{#if modifier}}<span class="dim">({{target}} {{numberFormat modifier sign=true}})</span>{{/if}}
+  </p>
+  <p class="outcome {{outcome}}">{{localize outcomeLabel}} ({{localize "GMENTOR.Roll.Margin"}} {{numberFormat margin sign=true}})</p>
+</div>
