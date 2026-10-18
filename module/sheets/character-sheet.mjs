@@ -53,6 +53,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     form: { submitOnChange: true },
     actions: {
       roll: CharacterSheet.#onRoll,
+      stepValue: CharacterSheet.#onStepValue,
       rollDamage: CharacterSheet.#onRollDamage,
       addItem: CharacterSheet.#onAddItem,
       createItem: CharacterSheet.#onCreateItem,
@@ -268,6 +269,34 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     if ( Number.isFinite(value) ) this.#getItem(event.target)?.update({ [field]: value });
   }
 
+  /**
+   * Кнопки панели у поля характеристики не забирают фокус: иначе панель (она видна, пока поле в фокусе)
+   * пропала бы после первого нажатия. Поле с name Foundry снова фокусирует после перерисовки.
+   * @inheritDoc
+   */
+  async _onFirstRender(context, options) {
+    await super._onFirstRender(context, options);
+    this.element.addEventListener("mousedown", event => {
+      if ( event.target.closest(".spinner") ) event.preventDefault();
+    });
+    // Стрелки клавиатуры и колесо у поля в фокусе, как bindSpinners в GMentor: с Ctrl шаг ×10.
+    // Обычные стрелки тоже перехватываем, чтобы значение сохранялось сразу, а не при уходе с поля
+    this.element.addEventListener("keydown", event => {
+      const input = event.target.closest(".char-input input");
+      const direction = { ArrowUp: 1, ArrowDown: -1 }[event.key];
+      if ( !input || !direction ) return;
+      event.preventDefault();
+      CharacterSheet.#stepInput(input, direction * (event.ctrlKey ? 10 : 1));
+    });
+    // passive: false — иначе preventDefault не остановит прокрутку листа
+    this.element.addEventListener("wheel", event => {
+      const input = event.target.closest(".char-input input");
+      if ( (input !== document.activeElement) || !event.deltaY ) return;
+      event.preventDefault();
+      CharacterSheet.#stepInput(input, (event.deltaY < 0 ? 1 : -1) * (event.ctrlKey ? 10 : 1));
+    }, { passive: false });
+  }
+
   /** @inheritDoc */
   async _preparePartContext(partId, context, options) {
     context = await super._preparePartContext(partId, context, options);
@@ -290,6 +319,20 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   static #onRoll(event, target) {
     const { label, value } = target.dataset;
     return this.actor.rollSuccess(label, Number(value), { askModifier: event.shiftKey });
+  }
+
+  /** Стрелка панели: изменить итог на шаг поля, с Ctrl — на 10 шагов. */
+  static #onStepValue(event, target) {
+    const input = target.closest(".char-input").querySelector("input");
+    const direction = (target.dataset.direction === "up") ? 1 : -1;
+    CharacterSheet.#stepInput(input, direction * (event.ctrlKey ? 10 : 1));
+  }
+
+  /** Сдвинуть числовое поле на steps шагов (у скорости шаг 0.25) и сохранить, как при вводе. */
+  static #stepInput(input, steps) {
+    if ( steps > 0 ) input.stepUp(steps);
+    else input.stepDown(-steps);
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   static #onRollDamage(event, target) {

@@ -8,8 +8,19 @@
     <span class="abbr">{{localize abbr}}</span>
     <span class="name">{{localize name}}</span>
   {{#if roll}}</a>{{else}}</span>{{/if}}
-  <input class="char-value" type="number" name="{{path}}" value="{{value}}" step="{{step}}"
-         {{#if warning}}data-tooltip="GMENTOR.LimitWarning"{{/if}}>
+  {{!-- Панель у поля в фокусе: стрелки и кубик, как spinn-panel в GMentor --}}
+  <span class="char-input">
+    <input class="char-value" type="number" name="{{path}}" value="{{value}}" step="{{step}}"
+           {{#if warning}}data-tooltip="GMENTOR.LimitWarning"{{/if}}>
+    <span class="spinner">
+      <a class="spinner-up" data-action="stepValue" data-direction="up"><i class="fa-solid fa-caret-up" inert></i></a>
+      <a class="spinner-down" data-action="stepValue" data-direction="down"><i class="fa-solid fa-caret-down" inert></i></a>
+      {{#if roll}}
+      <a class="spinner-roll" data-action="roll" data-label="{{localize name}}" data-value="{{value}}"
+         data-tooltip="GMENTOR.Roll.Roll"><i class="fa-solid fa-dice-d6" inert></i></a>
+      {{/if}}
+    </span>
+  </span>
   <span class="char-side">
     <span class="char-cost">{{cost}}</span>
     {{#with note}}

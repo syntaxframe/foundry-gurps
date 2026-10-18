@@ -330,11 +330,67 @@
   -moz-appearance: textfield;
 }
 
-/* Без стрелок у числового поля: в GMentor значение крутится колесом, у нас вводится с клавиатуры */
+/* Без встроенных стрелок у числового поля: свои — в панели .spinner */
 .gmentor .char-row input.char-value::-webkit-inner-spin-button,
 .gmentor .char-row input.char-value::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* Панель у поля в фокусе: ▲▼ и кубик справа, поверх стоимости, как spinn-panel в GMentor */
+.gmentor .char-input {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.gmentor .char-input .spinner {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  z-index: 10;
+  margin-left: 2px;
+  grid-template-columns: auto auto;
+  gap: 1px;
+}
+
+.gmentor .char-input:focus-within .spinner {
+  display: grid;
+}
+
+.gmentor .spinner a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 14px;
+  background: var(--gm-frame);
+  color: var(--gm-bg);
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.gmentor .spinner a:hover {
+  opacity: 0.9;
+}
+
+.gmentor .spinner .spinner-up {
+  border-radius: 5px 5px 0 0;
+}
+
+.gmentor .spinner .spinner-down {
+  grid-column: 1;
+  border-radius: 0 0 5px 5px;
+}
+
+.gmentor .spinner .spinner-roll {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  width: 22px;
+  height: auto;
+  border-radius: 4px 12px 12px 4px;
 }
 
 .gmentor .attributes input.char-value {
