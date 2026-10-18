@@ -48,7 +48,7 @@ export default class ItemPicker extends HandlebarsApplicationMixin(ApplicationV2
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const index = await this.#pack.getIndex({ fields: ["folder", "system.identifier", "system.basePoints",
-      "system.pointsPerLevel", "system.notes", "system.attribute", "system.difficulty"] });
+      "system.pointsPerLevel", "system.notes", "system.attribute", "system.difficulty", "system.techLevel", "system.value"] });
     const entries = index.contents.map(entry => ({
       uuid: entry.uuid,
       name: entry.name,
@@ -67,9 +67,16 @@ export default class ItemPicker extends HandlebarsApplicationMixin(ApplicationV2
     });
   }
 
-  /** Короткая справка справа: цена черты («5 + 10/ур.») или атрибут и сложность умения («ЛВ/С»). */
+  /**
+   * Короткая справка справа: цена черты («5 + 10/ур.»), атрибут и сложность умения («ЛВ/С»),
+   * ТУ и цена снаряжения («ТУ3 · $520»).
+   */
   #summary(entry) {
     const system = entry.system ?? {};
+    if ( entry.type === "equipment" ) {
+      const techLevel = system.techLevel ? `${game.i18n.localize("GMENTOR.TL")}${system.techLevel}` : "";
+      return [techLevel, `$${system.value ?? 0}`].filter(Boolean).join(" · ");
+    }
     if ( entry.type === "skill" ) {
       const attribute = game.i18n.localize(`GMENTOR.AttributeAbbr.${system.attribute}`);
       return `${attribute}/${game.i18n.localize(`GMENTOR.DifficultyAbbr.${system.difficulty}`)}`;

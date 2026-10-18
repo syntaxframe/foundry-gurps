@@ -43,7 +43,7 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
 
   /**
    * Бонусы от черт, состояний и снаряжения. Active Effects (ключи вида system.bonuses.st) Foundry применяет
-   * между prepareBaseData и prepareDerivedData, эффекты черт — #applyTraitFeatures в начале prepareDerivedData.
+   * между prepareBaseData и prepareDerivedData, эффекты черт и снаряжения — #applyFeatures в начале prepareDerivedData.
    */
   prepareBaseData() {
     this.bonuses = {
@@ -56,7 +56,7 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
   }
 
   prepareDerivedData() {
-    this.#applyTraitFeatures();
+    const drBonuses = this.#applyFeatures();
     const b = this.bonuses;
     const sm = this.sm + b.sm;
     const sizeModifier = rules.sizeCostModifier(sm);
@@ -101,37 +101,50 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
     const thr = rules.thrust(strikingSt);
     // Удар кулаком thr−1, пинок thr (B271)
     this.damage = { thr, sw: rules.swing(strikingSt), punch: rules.addDamage(thr, -1), kick: thr };
-    // СП по локациям: естественная плюс бонус на всё тело. Броня по локациям — позже
-    this.locations = rules.LOCATIONS.map(l => ({ ...l, dr: l.dr + b.dr }));
+    // СП по локациям: естественная, бонус на всё тело из эффектов, броня и черты
+    this.locations = rules.locationArmor(drBonuses, b.dr);
     this.lift = rules.basicLift(st.total + b.liftingSt) / 2; // в кг: в русском издании 1 фунт = 0.5 кг
 
     this.#prepareItems(cost);
     this.#prepareEncumbrance();
+    this.#prepareContainers();
+    this.#prepareWealth();
     this.#prepareDefenses();
     this.#preparePoints(cost);
   }
 
+  /** Черты и снаряжение, чьи эффекты действуют на персонажа (у снаряжения — только надетого). */
+  get #featureSources() {
+    return [...this.parent.itemTypes.advantage, ...this.parent.itemTypes.equipment];
+  }
+
   /**
-   * Эффекты черт на характеристики и реакцию. Предметы к этому моменту уже подготовлены, поэтому
+   * Эффекты черт и снаряжения на характеристики и реакцию. Предметы к этому моменту уже подготовлены, поэтому
    * activeFeatures посчитаны. Бонусы к умениям и заклинаниям применяются в #prepareItems.
+   * @returns {object[]}  Эффекты СП: локации считаются позже, вместе с остальными производными
    */
-  #applyTraitFeatures() {
+  #applyFeatures() {
     // Все модификаторы реакции с источником, как reaction-text в GMentor; условные в итог не входят
     this.reactions = [];
-    for ( const item of this.parent.itemTypes.advantage ) {
+    this.wealthMultiplier = 1;
+    const drBonuses = [];
+    for ( const item of this.#featureSources ) {
       for ( const feature of item.system.activeFeatures ) {
         if ( feature.type === "attribute" ) this.bonuses[feature.target] += feature.value;
+        else if ( feature.type === "dr" ) drBonuses.push(feature);
+        else if ( feature.type === "wealth" ) this.wealthMultiplier *= feature.value;
         else if ( feature.type === "reaction" ) {
           if ( !feature.situation ) this.bonuses.reaction += feature.value;
           this.reactions.push({ source: item.name, value: feature.value, situation: feature.situation });
         }
       }
     }
+    return drBonuses;
   }
 
   /**
-   * Бонусы черт к умению или заклинанию (skill_bonus, spell_bonus в GMentor) с источником: лист показывает,
-   * откуда взялся бонус, а в строке черты — каким умениям она его дала.
+   * Бонусы черт и снаряжения к умению или заклинанию (skill_bonus, spell_bonus в GMentor) с источником: лист
+   * показывает, откуда взялся бонус, а в строке черты или предмета — каким умениям он его дал.
    * @returns {{traitId: string, source: string, value: number}[]}
    */
   #traitBonuses(item) {
@@ -145,10 +158,10 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
         && rules.compareText(lower(s.specialization), lower(feature.specialization), feature.specializationCompare);
     };
     const bonuses = [];
-    for ( const trait of this.parent.itemTypes.advantage ) {
-      for ( const feature of trait.system.activeFeatures ) {
+    for ( const source of this.#featureSources ) {
+      for ( const feature of source.system.activeFeatures ) {
         if ( (feature.type !== item.type) || !feature.value || !matches(feature) ) continue;
-        bonuses.push({ traitId: trait.id, source: trait.name, value: feature.value });
+        bonuses.push({ traitId: source.id, source: source.name, value: feature.value });
       }
     }
     return bonuses;
@@ -201,23 +214,173 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
         }
       }
     }
-    // Уровень оружия берём из умения с тем же названием: умения уже посчитаны в цикле выше
+    // Оружие и требования снаряжения считаются от умений, поэтому после цикла выше
     for ( const item of this.parent.itemTypes.equipment ) {
-      const skill = this.findSkill(item.system.skill);
-      item.system.skillLevel = skill?.system.level ?? null;
+      item.system.unmetPrereqs = this.#unmetPrereqs(item);
+      const modifiers = this.#applyEquipmentModifiers(item);
+      for ( const mode of item.system.weapons ) this.#prepareWeaponMode(mode, modifiers);
+      if ( item.system.vehicle ) this.#prepareVehicle(item.system.vehicle);
     }
+  }
+
+  /**
+   * Модификаторы, лежащие прямо в предмете (equipment_modifier в GMentor): цена и вес меняются, пока модификатор
+   * с собой, боевые изменения и пометка у оружия — только у надетого, как в charCalcWeapons.
+   * Боеприпас заряжен один — первый надетый: его количество показывается как оставшиеся выстрелы, а остальные
+   * лежат про запас и на оружие не действуют (в GMentor действуют все). Цену и вес боеприпас меняет себе
+   * (EquipmentData#prepareDerivedData), а не оружию: серебряные пули дороже, а не автомат.
+   * @returns {object[]}  Боевые изменения для rules.modifyWeapon
+   */
+  #applyEquipmentModifiers(item) {
+    const s = item.system;
+    const combat = [];
+    for ( const modifier of this.parent.itemTypes.equipment ) {
+      const m = modifier.system;
+      if ( !m.isModifier || (m.containerId !== item.id) || (m.state === "stored") ) continue;
+      const equipped = m.state === "equipped";
+      if ( m.ammunition && equipped ) s.loadedAmmo ??= modifier;
+      const active = equipped && (!m.ammunition || (s.loadedAmmo === modifier));
+      for ( const change of m.weaponModifiers ) {
+        if ( change.type === "cost" ) {
+          if ( !m.ammunition ) s.valueFactor *= change.multiplier;
+        }
+        else if ( change.type === "weight" ) {
+          if ( !m.ammunition ) s.weightFactor *= change.multiplier;
+        }
+        else if ( active ) combat.push(change);
+      }
+      if ( active && m.label ) s.modifierLabels.push(m.label);
+    }
+    return combat;
+  }
+
+  /**
+   * Невыполненные требования предмета, как checkPrerequisits в GMentor: умение должно быть изучено (уровень
+   * посчитан). Название сравнивается по идентификатору, как в бонусах черт, специализация — без учёта регистра.
+   * @returns {object[]}  Требования из system.prereqs, которые не выполнены
+   */
+  #unmetPrereqs(item) {
+    const lower = text => text.trim().toLowerCase();
+    return item.system.prereqs.filter(prereq => {
+      const found = this.parent.itemTypes.skill.some(skill => (skill.system.level !== null)
+        && rules.compareText(rules.toIdentifier(skill.system.identifier), rules.toIdentifier(prereq.name), prereq.nameCompare)
+        && rules.compareText(lower(skill.system.specialization), lower(prereq.specialization), prereq.specializationCompare));
+      return found !== prereq.has;
+    });
+  }
+
+  /** Уровень и итоги режима оружия с модификаторами снаряжения, как charCalcWeapons в GMentor. */
+  #prepareWeaponMode(mode, modifiers) {
+    const st = this.attributes.st.total;
+    const best = this.#bestDefault(mode.defaults);
+    const modified = rules.modifyWeapon(mode, modifiers, this.damage);
+    mode.level = best ? best.level + modified.skill : null;
+    mode.levelSource = best?.source ?? null;
+    mode.damageText = rules.resolveDamage(modified.damage, this.damage);
+    // "Special", "HT-4 aff" бросить нельзя
+    mode.rollable = !!rules.parseDamage(mode.damageText, this.damage);
+    mode.weak = rules.lacksStrength(mode.minSt, st);
+    if ( mode.type === "ranged" ) {
+      mode.accuracyText = modified.accuracy;
+      mode.rangeText = rules.resolveRange(modified.range, st);
+      return;
+    }
+    // Защитные бонусы (щит, Боевые рефлексы) добавляются так же, как к защитам от умений
+    for ( const defense of ["parry", "block"] ) {
+      const result = rules.weaponDefense(mode[defense], mode.level);
+      mode[`${defense}Result`] = result && { ...result, value: result.value + this.bonuses[defense] };
+    }
+  }
+
+  /**
+   * Уровень управления транспортом, как charCalcWeapons в GMentor: лучшее из умолчаний (Вождение, Верховая езда)
+   * плюс управляемость ("+1", "-2/-3" — берётся первое число), B462.
+   */
+  #prepareVehicle(vehicle) {
+    const best = this.#bestDefault(vehicle.defaults);
+    const handling = parseInt(vehicle.handling) || 0;
+    vehicle.level = best ? best.level + handling : null;
+    vehicle.levelSource = best?.source ?? null;
+  }
+
+  /**
+   * Лучший уровень из умолчаний оружия, как getBestDefault в GMentor: умение персонажа или атрибут
+   * (не выше 20) плюс модификатор. Отрицательный уровень GMentor не показывает.
+   * @returns {{level: number, source: {skill: Item|null, attribute: string|null, modifier: number}}|null}
+   */
+  #bestDefault(defaults) {
+    let best = null;
+    for ( const entry of defaults ) {
+      const skill = (entry.type === "skill") ? this.#defaultSkill(entry) : null;
+      if ( (entry.type === "skill") && !skill ) continue;
+      const base = skill ? skill.system.level : Math.min(this.getAttributeValue(entry.type), 20);
+      const level = base + entry.modifier;
+      if ( best && (level <= best.level) ) continue;
+      best = { level, source: { skill, attribute: skill ? null : entry.type, modifier: entry.modifier } };
+    }
+    return (best?.level >= 0) ? best : null;
+  }
+
+  /**
+   * Изученное умение для умолчания оружия. Название из библиотеки английское и сравнивается с identifier,
+   * введённое вручную — с русским названием. Специализацию проверяем, только если она указана.
+   */
+  #defaultSkill({ name, specialization }) {
+    const lower = text => text.trim().toLowerCase();
+    const identifier = rules.toIdentifier(name);
+    const matches = skill => ((!!identifier && (rules.toIdentifier(skill.system.identifier) === identifier))
+      || (lower(skill.name) === lower(name)))
+      && (!specialization || (lower(skill.system.specialization) === lower(specialization)));
+    const known = this.parent.itemTypes.skill.filter(skill => (skill.system.level !== null) && matches(skill));
+    return known.sort((a, b) => b.system.level - a.system.level)[0] ?? null;
   }
 
   #prepareEncumbrance() {
     let weight = 0;
+    let storedWeight = 0;
     for ( const item of this.parent.itemTypes.equipment ) {
-      if ( item.system.state !== "stored" ) weight += item.system.weight * item.system.quantity;
+      const itemWeight = item.system.effectiveWeight * item.system.quantity;
+      if ( item.system.state === "stored" ) storedWeight += itemWeight;
+      else weight += itemWeight;
     }
     const level = rules.encumbranceLevel(weight, this.lift);
     this.encumbrance = {
       weight: Math.round(weight * 100) / 100,
+      // «Не с собой» в нагрузку не входит, но показывается отдельно, как в GMentor
+      storedWeight: Math.round(storedWeight * 100) / 100,
       level,
       thresholds: rules.ENCUMBRANCE_MULTIPLIERS.map((m, i) => ({ level: i, weight: this.lift * m, active: i === level }))
+    };
+  }
+
+  /**
+   * Вес и цена содержимого контейнеров, как gc-container-weight в GMentor, и превышение вместимости.
+   * В нагрузку содержимое уже вошло в #prepareEncumbrance: у каждого предмета своё состояние.
+   */
+  #prepareContainers() {
+    const round = value => Math.round(value * 100) / 100;
+    for ( const item of this.parent.itemTypes.equipment ) {
+      const s = item.system;
+      if ( !s.isContainer ) continue;
+      const contents = s.descendants.map(i => i.system);
+      const weight = round(contents.reduce((sum, c) => sum + (c.effectiveWeight * c.quantity), 0));
+      const value = round(contents.reduce((sum, c) => sum + (c.effectiveValue * c.quantity), 0));
+      s.contents = { count: contents.length, weight, value, overCapacity: (s.capacity > 0) && (weight > s.capacity) };
+    }
+  }
+
+  /**
+   * Цена всего снаряжения и стартовые деньги (B25–B27), как calcEquipmentWeightAndValue в GMentor.
+   * На снаряжение можно потратить 20% стартовых денег (B26); у бедных и нищих эту долю GMentor не показывает.
+   */
+  #prepareWealth() {
+    const value = this.parent.itemTypes.equipment.reduce((sum, item) => sum + (item.system.effectiveValue * item.system.quantity), 0);
+    const starting = rules.startingWealth(this.tl, this.wealthMultiplier);
+    this.wealth = {
+      multiplier: this.wealthMultiplier,
+      starting,
+      forEquipment: (this.wealthMultiplier > 0.2) ? starting * 0.2 : null,
+      equipmentValue: Math.round(value * 100) / 100
     };
   }
 
@@ -257,13 +420,6 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
   getAttributeValue(key) {
     if ( key in this.attributes ) return this.attributes[key].total;
     return this[key]?.value ?? 10;
-  }
-
-  /** Поиск умения по названию без учёта регистра. */
-  findSkill(name) {
-    const target = name?.trim().toLowerCase();
-    if ( !target ) return null;
-    return this.parent.itemTypes.skill.find(i => i.name.trim().toLowerCase() === target) ?? null;
   }
 
   /** Короткие имена для формул: инициатива "@speed + @dx / 100", @st и т.п. Вызывается из GMentorActor. */

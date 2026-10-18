@@ -1,5 +1,6 @@
 import { CONDITIONS, CONDITION_GROUPS, conditionDescription } from "../conditions.mjs";
 import { PROFILE_FIELDS, SENSES } from "../data/character.mjs";
+import { VEHICLE_FIELDS } from "../data/items.mjs";
 import ItemPicker from "./item-picker.mjs";
 import { setupItemData } from "./item-setup.mjs";
 
@@ -59,6 +60,9 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       createItem: CharacterSheet.#onCreateItem,
       editItem: CharacterSheet.#onEditItem,
       deleteItem: CharacterSheet.#onDeleteItem,
+      cycleState: CharacterSheet.#onCycleState,
+      toggleContainer: CharacterSheet.#onToggleContainer,
+      spendAmmo: CharacterSheet.#onSpendAmmo,
       sortByName: CharacterSheet.#onSortByName,
       toggleDescriptions: CharacterSheet.#onToggleDescriptions,
       addCondition: CharacterSheet.#onAddCondition,
@@ -103,7 +107,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const context = await super._prepareContext(options);
     const actor = this.actor;
     const system = actor.system;
-    const byKind = items => items.sort((a, b) => a.sort - b.sort);
+    const equipment = actor.itemTypes.equipment.toSorted((a, b) => a.sort - b.sort);
     Object.assign(context, {
       actor,
       system,
@@ -123,8 +127,10 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       advantages: await this.#prepareList("advantage", "GMENTOR.AdvantagesList"),
       skills: await this.#prepareList("skill", "GMENTOR.Skills"),
       spells: await this.#prepareList("spell", "GMENTOR.Spells"),
-      equipment: byKind(actor.itemTypes.equipment),
-      weapons: actor.itemTypes.equipment.filter(i => i.system.isWeapon && (i.system.state === "equipped")),
+      equipment: this.#prepareEquipment(equipment),
+      ...this.#prepareWeapons(equipment),
+      ...this.#prepareVehicles(equipment),
+      wealth: this.#prepareWealth(),
       enrichedNotes: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes, {
         secrets: actor.isOwner, relativeTo: actor
       })
@@ -170,15 +176,101 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   }
 
   /**
-   * Что черта даёт персонажу, одной строкой: «Уклонение +1, Проверка страха +2, Первая помощь +1».
+   * Строки вкладки снаряжения деревом: содержимое контейнера идёт сразу под ним с отступом depth.
+   * Предмет, чей контейнер не найден (удалён на другом клиенте), показываем на верхнем уровне.
+   * @param {Item[]} equipment  Снаряжение в порядке sort
+   */
+  #prepareEquipment(equipment) {
+    const ids = new Set(equipment.map(item => item.id));
+    const childrenOf = id => equipment.filter(item => (ids.has(item.system.containerId) ? item.system.containerId : "") === id);
+    const rows = [];
+    const addRows = (id, depth) => {
+      for ( const item of childrenOf(id) ) {
+        // Содержимое показываем, даже если у предмета потом сняли флажок «Контейнер», иначе оно пропало бы
+        const hasContents = item.system.isContainer || (childrenOf(item.id).length > 0);
+        const collapsed = this.#collapsedContainers.has(item.id);
+        const effects = [this.#traitEffects(item), this.#modifierEffects(item)].filter(Boolean).join(", ");
+        const unmetPrereqs = item.system.unmetPrereqs.map(prereq => this.#prereqText(prereq)).join("; ");
+        rows.push({ item, depth, hasContents, collapsed, effects, unmetPrereqs });
+        if ( hasContents && !collapsed ) addRows(item.id, depth + 1);
+      }
+    };
+    addRows("", 0);
+    return rows;
+  }
+
+  /** Цена снаряжения и стартовые деньги для итогов вкладки снаряжения, с разделителями разрядов. */
+  #prepareWealth() {
+    const { multiplier, starting, forEquipment, equipmentValue } = this.actor.system.wealth;
+    const money = value => `$${value.toLocaleString(game.i18n.lang)}`;
+    return {
+      multiplier,
+      multiplierText: multiplier.toLocaleString(game.i18n.lang),
+      equipmentValue: money(equipmentValue),
+      starting: money(starting),
+      forEquipment: (forEquipment === null) ? null : money(forEquipment)
+    };
+  }
+
+  /**
+   * Транспорт для таблицы на вкладке характеристик — в любом состоянии: лошадь и машину с собой не носят.
+   * Колонки — только поля, заполненные хоть у одного: у животных нет скорости сваливания и осадки.
+   */
+  #prepareVehicles(equipment) {
+    const vehicles = equipment.filter(item => item.system.vehicle).map(item => {
+      const vehicle = item.system.vehicle;
+      // Управляемость входит в уровень, как «мод» в подсказке GMentor: «Вождение +0, Упр. +1»
+      const handling = vehicle.handling ? `, ${game.i18n.localize("GMENTOR.VehicleField.handling")} ${vehicle.handling}` : "";
+      return { item, vehicle, levelHint: `${this.#weaponLevelHint(vehicle)}${vehicle.levelSource ? handling : ""}` };
+    });
+    const vehicleColumns = VEHICLE_FIELDS.filter(field => vehicles.some(({ vehicle }) => vehicle[field]));
+    return { vehicles, vehicleColumns };
+  }
+
+  /**
+   * Режимы надетого оружия для таблиц ближнего и дальнего боя, как оружие в руках в GMentor.
+   * @returns {{melee: object[], ranged: object[]}}
+   */
+  #prepareWeapons(equipment) {
+    const weapons = { melee: [], ranged: [] };
+    for ( const item of equipment ) {
+      if ( item.system.state !== "equipped" ) continue;
+      for ( const mode of item.system.weapons ) {
+        weapons[mode.type].push({ item, mode, levelHint: this.#weaponLevelHint(mode) });
+      }
+    }
+    return { meleeWeapons: weapons.melee, rangedWeapons: weapons.ranged };
+  }
+
+  /** Откуда уровень оружия, как gc-default в GMentor: «Топор/Булава +0», «ЛВ −4». */
+  #weaponLevelHint({ levelSource }) {
+    if ( !levelSource ) return game.i18n.localize("GMENTOR.NoWeaponSkill");
+    const { skill, attribute, modifier } = levelSource;
+    const name = skill ? skill.name : game.i18n.localize(`GMENTOR.AttributeAbbr.${attribute}`);
+    return `${name} ${modifier.signedString()}`;
+  }
+
+  /**
+   * Что черта или надетое снаряжение даёт персонажу, одной строкой: «Уклонение +1, СП Торс +4, Первая помощь +1».
    * Для умений и заклинаний перечисляем только те, что есть у персонажа: их названия русские, а в эффекте — id.
    */
   #traitEffects(trait) {
     const parts = [];
-    for ( const feature of trait.system.activeFeatures ) {
-      if ( !feature.value ) continue;
+    // Множители богатства перемножаются, как у персонажа: «Мультимиллионер 2» — ×10 000 одной записью.
+    // «Нищий» (×0) тоже показываем, поэтому до проверки на ноль ниже
+    const wealth = trait.system.activeFeatures.filter(feature => feature.type === "wealth");
+    if ( wealth.length ) {
+      const multiplier = wealth.reduce((product, feature) => product * feature.value, 1);
+      parts.push(`${game.i18n.localize("GMENTOR.FeatureType.wealth")} ×${multiplier.toLocaleString(game.i18n.lang)}`);
+    }
+    for ( const feature of this.#sumArmor(trait.system.activeFeatures) ) {
+      if ( !feature.value || (feature.type === "wealth") ) continue;
       const value = feature.value.signedString();
       if ( feature.type === "attribute" ) parts.push(`${game.i18n.localize(`GMENTOR.BonusTarget.${feature.target}`)} ${value}`);
+      else if ( feature.type === "dr" ) {
+        const dr = `${game.i18n.localize("GMENTOR.DRShort")} ${game.i18n.localize(`GMENTOR.Location.${feature.location}`)} ${value}`;
+        parts.push(feature.damageType ? `${dr} (${feature.damageType})` : dr);
+      }
       else if ( feature.type === "reaction" ) {
         const reaction = `${game.i18n.localize("GMENTOR.Reaction")} ${value}`;
         parts.push(feature.situation ? `${reaction} (${feature.situation})` : reaction);
@@ -190,6 +282,52 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       }
     }
     return parts.join(", ");
+  }
+
+  /** Требование словами: «Нужно умение battlesuit», «Не должно быть умения …». Название — идентификатор умения. */
+  #prereqText({ has, name, nameCompare, specialization, specializationCompare }) {
+    const compare = key => game.i18n.localize(`GMENTOR.Compare.${key.replaceAll(" ", "-")}`);
+    let skill = (nameCompare === "is") ? name : `${compare(nameCompare)} ${name}`;
+    if ( specializationCompare !== "is anything" ) skill += ` (${compare(specializationCompare)} ${specialization})`;
+    return game.i18n.format(has ? "GMENTOR.PrereqSkill" : "GMENTOR.PrereqNoSkill", { skill });
+  }
+
+  /** Что модификатор оружия меняет, одной строкой: «Урон +1, Цена × 4». */
+  #modifierEffects(item) {
+    if ( !item.system.isModifier ) return "";
+    return item.system.weaponModifiers.map(change => {
+      const label = game.i18n.localize(`GMENTOR.WeaponModifierType.${change.type}`);
+      if ( change.type === "damage" ) {
+        const perDice = change.perDice ? ` ${game.i18n.localize("GMENTOR.PerDice")}` : "";
+        return `${label} ${change.amount.signedString()}${perDice}`;
+      }
+      if ( "multiplier" in change ) return `${label} ${change.multiplier}`;
+      if ( "amount" in change ) return `${label} ${change.amount.signedString()}`;
+      return `${label} ${change.value}`;
+    }).join(", ");
+  }
+
+  /**
+   * Эффекты СП на одну локацию и тип урона складываем, чтобы кольчуга показывалась «СП Торс +5, СП Торс −2 (cr)»,
+   * а не каждой записью библиотеки отдельно. Остальные эффекты не меняются.
+   */
+  #sumArmor(features) {
+    const result = [];
+    const armor = new Map();
+    for ( const feature of features ) {
+      if ( feature.type !== "dr" ) {
+        result.push(feature);
+        continue;
+      }
+      const key = `${feature.location}|${feature.damageType}`;
+      if ( armor.has(key) ) armor.get(key).value += feature.value;
+      else {
+        const sum = { ...feature };
+        armor.set(key, sum);
+        result.push(sum);
+      }
+    }
+    return result;
   }
 
   /** Подсказка к уровню умения или заклинания: откуда бонусы черт, «+1 от «Боевые рефлексы»». */
@@ -357,10 +495,68 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
    * @inheritDoc
    */
   async _onDropItem(event, item) {
-    if ( !this.actor.isOwner || (item.parent?.uuid === this.actor.uuid) ) return super._onDropItem(event, item);
+    if ( !this.actor.isOwner ) return super._onDropItem(event, item);
+    if ( item.parent?.uuid === this.actor.uuid ) {
+      return (item.type === "equipment") ? this.#moveEquipment(event, item) : super._onDropItem(event, item);
+    }
     const keepId = !this.actor.items.has(item.id);
     const data = item.inCompendium ? game.items.fromCompendium(item, { clearFolder: true, keepId }) : item.toObject();
+    // Контейнер с другого персонажа сюда не переносится: кладём предмет туда, куда его бросили
+    if ( data.type === "equipment" ) {
+      Object.assign(data.system, this.#containerUpdate(this.#dropContainer(event, data.system.isModifier)));
+    }
     return this.#addItem(data, { keepId });
+  }
+
+  /** Строка снаряжения, на которую бросили предмет. */
+  #dropTarget(event) {
+    return this.actor.items.get(event.target.closest(".tab.equipment [data-item-id]")?.dataset.itemId) ?? null;
+  }
+
+  /**
+   * Куда попадёт брошенный предмет: в контейнер под курсором или в тот, где лежит предмет под курсором.
+   * Модификатор оружия, брошенный на оружие, ложится в него, как isEquipmentAutoContainer в GMentor.
+   */
+  #dropContainer(event, isModifier) {
+    const target = this.#dropTarget(event);
+    if ( target?.system.isContainer ) return target;
+    if ( isModifier && target?.system.weapons.length ) return target;
+    return this.actor.items.get(target?.system.containerId) ?? null;
+  }
+
+  /** Поля предмета в контейнере: id контейнера и его состояние, как в GMentor. Без контейнера — верхний уровень. */
+  #containerUpdate(container) {
+    if ( !container ) return { containerId: "" };
+    return { containerId: container.id, state: container.system.state };
+  }
+
+  /**
+   * Перетаскивание снаряжения внутри листа: на контейнер — внутрь, в конец; на другой предмет — рядом с ним,
+   * в тот же контейнер; на свободное место вкладки — в конец верхнего уровня.
+   */
+  async #moveEquipment(event, item) {
+    const target = this.#dropTarget(event);
+    if ( target === item ) return null;
+    const container = this.#dropContainer(event, item.system.isModifier);
+    // Контейнер нельзя положить в него самого или в то, что лежит внутри него
+    if ( container && ((container === item) || item.system.descendants.includes(container)) ) return null;
+    const containerId = container?.id ?? "";
+    const siblings = this.actor.itemTypes.equipment.filter(i => (i.system.containerId === containerId) && (i !== item));
+    const update = { _id: item.id, ...this.#systemUpdate(this.#containerUpdate(container)) };
+    let updates = [update];
+    if ( target && (target !== container) ) {
+      // Рядом с предметом: сортировка ядра по соседям в том же контейнере
+      updates = foundry.utils.performIntegerSort(item, { target, siblings })
+        .map(({ target: sorted, update: sort }) => (sorted === item ? { ...update, ...sort } : { _id: sorted.id, ...sort }));
+      if ( !updates.some(u => u._id === item.id) ) updates.push(update);
+    }
+    else update.sort = Math.max(0, ...siblings.map(i => i.sort)) + CONST.SORT_INTEGER_DENSITY;
+    return this.actor.updateEmbeddedDocuments("Item", updates);
+  }
+
+  /** {containerId: "x"} → {"system.containerId": "x"} для updateEmbeddedDocuments. */
+  #systemUpdate(fields) {
+    return Object.fromEntries(Object.entries(fields).map(([key, value]) => [`system.${key}`, value]));
   }
 
   /** Задать вопросы по новому предмету (модификаторы, самоконтроль, заглушки) и добавить его персонажу. */
@@ -403,6 +599,28 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   static #onDeleteItem(event, target) {
     return this.#getItem(target)?.deleteDialog();
+  }
+
+  /** Свернуть или развернуть содержимое контейнера, как expander в GMentor. Запоминается до закрытия листа. */
+  static #onToggleContainer(event, target) {
+    const id = target.closest("[data-item-id]").dataset.itemId;
+    if ( this.#collapsedContainers.has(id) ) this.#collapsedContainers.delete(id);
+    else this.#collapsedContainers.add(id);
+    return this.render({ parts: ["equipment"] });
+  }
+
+  /** Выстрел: минус один боеприпас из заряженного в оружие, как «Вычитать патроны» в инструменте атаки GMentor. */
+  static #onSpendAmmo(event, target) {
+    const ammo = this.actor.items.get(target.dataset.ammoId);
+    if ( !ammo?.system.quantity ) return;
+    return ammo.update({ "system.quantity": ammo.system.quantity - 1 });
+  }
+
+  /** Значок состояния снаряжения по кругу, как equipped в GMentor: надето → с собой → не с собой. */
+  static #onCycleState(event, target) {
+    const item = this.#getItem(target);
+    const next = { equipped: "carried", carried: "stored", stored: "equipped" };
+    return item?.update({ "system.state": next[item.system.state] });
   }
 
   /** Диалог выбора состояний по группам, как «Добавить временное состояние» в GMentor. */
@@ -486,4 +704,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** Типы предметов, у которых в списке показаны описания. */
   #shownDescriptions = new Set();
+
+  /** Свёрнутые контейнеры снаряжения (id предметов). */
+  #collapsedContainers = new Set();
 }

@@ -1,5 +1,5 @@
 {{!--
-  Эффекты черты или модификатора. Параметры: features — массив, prefix — имя поля в форме
+  Эффекты черты, модификатора или снаряжения. Параметры: features — массив, prefix — имя поля в форме
   ("system.features", "system.modifiers.2.features"), modifier — индекс модификатора или пусто для самой черты.
 --}}
 <ul class="features">
@@ -9,7 +9,11 @@
     <span class="feature-type">{{localize (concat "GMENTOR.FeatureType." type)}}</span>
     {{!-- Поля типа; пара «способ сравнения + значение» переносится целиком, если не хватает ширины --}}
     <span class="feature-fields">
-      {{#if (eq type "attribute")}}
+      {{#if (eq type "dr")}}
+      <select name="{{../prefix}}.{{@index}}.location">{{selectOptions @root.choices.drLocation selected=location localize=true}}</select>
+      <input type="text" name="{{../prefix}}.{{@index}}.damageType" value="{{damageType}}" placeholder="{{localize "GMENTOR.DamageTypePlaceholder"}}"
+        data-tooltip="GMENTOR.DamageTypeHint">
+      {{else if (eq type "attribute")}}
       <select name="{{../prefix}}.{{@index}}.target">{{selectOptions @root.choices.bonusTarget selected=target localize=true}}</select>
       {{else if (eq type "reaction")}}
       <input type="text" name="{{../prefix}}.{{@index}}.situation" value="{{situation}}" placeholder="{{localize "GMENTOR.SituationPlaceholder"}}">
@@ -30,9 +34,12 @@
       {{/if}}
     </span>
     <input class="feature-amount" type="number" name="{{../prefix}}.{{@index}}.amount" value="{{amount}}" step="any">
+    {{!-- У снаряжения нет уровней --}}
+    {{#if (eq @root.item.type "advantage")}}
     <label class="feature-per-level" data-tooltip="GMENTOR.PerLevelHint">
       <input type="checkbox" name="{{../prefix}}.{{@index}}.perLevel" {{checked perLevel}}> {{localize "GMENTOR.PerLevel"}}
     </label>
+    {{/if}}
     <a data-action="deleteFeature" data-modifier="{{../modifier}}" data-index="{{@index}}" data-tooltip="GMENTOR.Delete">
       <i class="fa-solid fa-trash" inert></i></a>
   </li>

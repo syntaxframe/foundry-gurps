@@ -62,6 +62,40 @@ export const LOCATIONS = [
   { key: "feet", roll: "16", toHit: -4, dr: 0 }
 ];
 
+// Группы локаций, на которые броня и черты дают СП одной записью (dr_bonus в GMentor)
+const DR_GROUPS = {
+  head: ["skull", "face"],
+  fullBody: LOCATIONS.map(l => l.key),
+  fullBodyExceptEyes: LOCATIONS.map(l => l.key).filter(key => key !== "eyes")
+};
+
+/** Куда бывает СП у брони и черт: локации и их группы. */
+export const DR_LOCATIONS = [...LOCATIONS.map(l => l.key), ...Object.keys(DR_GROUPS)];
+
+/**
+ * СП по локациям, как charCalcDR в GMentor: естественная СП локации, общий бонус и бонусы брони и черт.
+ * Бонус с типом урона действует только против него, поэтому СП против типа = общая СП + такие бонусы.
+ * @param {{location: string, damageType: string, value: number}[]} bonuses
+ * @param {number} [common=0]  СП на всё тело (Active Effects)
+ * @returns {object[]}  LOCATIONS с итоговой dr и types — [{type, dr}] против отдельных типов урона
+ */
+export function locationArmor(bonuses, common = 0) {
+  const armor = new Map(LOCATIONS.map(l => [l.key, { dr: l.dr + common, byType: {} }]));
+  for ( const { location, damageType, value } of bonuses ) {
+    for ( const key of DR_GROUPS[location] ?? [location] ) {
+      const entry = armor.get(key);
+      if ( !entry ) continue;
+      if ( damageType ) entry.byType[damageType] = (entry.byType[damageType] ?? 0) + value;
+      else entry.dr += value;
+    }
+  }
+  return LOCATIONS.map(location => {
+    const { dr, byType } = armor.get(location.key);
+    const types = Object.entries(byType).filter(([, add]) => add).map(([type, add]) => ({ type, dr: dr + add }));
+    return { ...location, dr, types };
+  });
+}
+
 /** Базовый подъём (B15) в фунтах: ST²/5, от 10 и выше округляется. */
 export function basicLift(st) {
   const bl = st * st / 5;
@@ -75,6 +109,15 @@ export const ENCUMBRANCE_MULTIPLIERS = [1, 2, 3, 6, 10];
 export function encumbranceLevel(weight, lift) {
   const level = ENCUMBRANCE_MULTIPLIERS.findIndex(m => weight <= lift * m);
   return level === -1 ? 5 : level;
+}
+
+// Стартовое богатство по ТУ кампании (B27), как getStartingWealth в GMentor; от ТУ12 — $100 000
+const STARTING_WEALTH = [250, 500, 750, 1000, 2000, 5000, 10000, 15000, 20000, 30000, 50000, 75000, 100000];
+
+/** Стартовые деньги персонажа: по ТУ и множителю черты «Богатство» (B25–B27). */
+export function startingWealth(tl, multiplier = 1) {
+  const base = STARTING_WEALTH[Math.min(Math.max(tl, 0), STARTING_WEALTH.length - 1)];
+  return base * multiplier;
 }
 
 // Цена уровня атрибута (B14)
@@ -206,4 +249,148 @@ export function parseDamage(text, { thr, sw }) {
   const dice = parseInt(base);
   const formula = `${dice}d6${add > 0 ? `+${add}` : add < 0 ? add : ""}`;
   return { formula, type: type.trim() };
+}
+
+/* -------------------------------------------- */
+/*  Оружие                                      */
+/* -------------------------------------------- */
+
+/**
+ * Урон оружия кубиками персонажа, как damage-result в GMentor: "sw+2 cut" при sw 1d+2 → "2d cut".
+ * Урон без thr/sw ("2d+1 pi", "Special") возвращается как есть.
+ */
+export function resolveDamage(text, { thr, sw }) {
+  const match = String(text).trim().match(/^(thr|sw)\s*([+-]\s*\d+)?(.*)$/i);
+  if ( !match ) return String(text).trim();
+  const [, base, add, rest] = match;
+  const dice = (base.toLowerCase() === "thr") ? thr : sw;
+  // Делитель брони пишется вплотную к кубикам: "1d(2) pi"
+  const tail = rest.trim();
+  const separator = tail.startsWith("(") ? "" : " ";
+  return `${addDamage(dice, Number((add ?? "0").replace(/\s/g, "")))}${separator}${tail}`.trim();
+}
+
+/** Число со знаком: 2 → "+2", -1 → "-1". */
+const signed = number => (number >= 0 ? `+${number}` : String(number));
+
+// Урон в записи оружия: "2d+1", "sw+2", "thr" (без "3dx2" — множитель кубиков)
+const DAMAGE_DICE = /\b(\d{1,2})d([+-]\d{1,2})?(?!x)/;
+const DAMAGE_BY_ST = /\b(sw|thr)([+-]\d{1,2})?\b/;
+
+/** Сколько кубиков в уроне оружия: у "sw+2" — сколько их в sw персонажа. */
+function damageDice(text, { thr, sw }) {
+  const dice = String(text).match(DAMAGE_DICE);
+  if ( dice ) return Number(dice[1]);
+  const byST = String(text).match(DAMAGE_BY_ST);
+  return byST ? parseInt(byST[1] === "thr" ? thr : sw) || 1 : 1;
+}
+
+/** Прибавить к урону оружия, как "damage value" в GMentor: "sw+2 cut" +1 → "sw+3 cut", "2d+1 pi" +1 → "2d+2 pi". */
+function addWeaponDamage(text, add) {
+  const dice = text.match(DAMAGE_DICE);
+  if ( dice ) return text.replace(dice[0], addDamage(dice[0], add));
+  const byST = text.match(DAMAGE_BY_ST);
+  if ( !byST ) return `${text}${signed(add)}`;
+  const mod = Number(byST[2] ?? 0) + add;
+  return text.replace(byST[0], `${byST[1]}${mod ? signed(mod) : ""}`);
+}
+
+/** Делитель брони (B378), как "damage dr" в GMentor: "1d+2 imp" и 2 → "1d+2(2) imp"; старый делитель заменяется. */
+function setArmorDivisor(text, divisor) {
+  const match = text.match(/\b((?:\d{1,2}d|sw|thr)(?:[+-]\d{1,2})?)(\([\d.]+\))?/);
+  if ( !match ) return `${text}(${divisor})`;
+  return text.replace(match[0], `${match[1]}(${divisor})`);
+}
+
+/**
+ * Тип урона, как "damage type" в GMentor: "pi" и т.п. заменяет тип, "++" и "--" сдвигают проникающий урон
+ * на ступень (pi- → pi → pi+ → pi++), как пули с полой оболочкой и бронебойные (B279).
+ */
+function changeDamageType(text, type) {
+  const steps = ["pi--", "pi-", "pi", "pi+", "pi++"];
+  let result;
+  if ( (type === "++") || (type === "--") ) {
+    result = text.replace(/\bpi(\+\+|\+|--|-)?(?=$|\s)/i, found => {
+      const index = steps.indexOf(found.toLowerCase()) + (type === "++" ? 1 : -1);
+      return steps[Math.min(Math.max(index, 0), steps.length - 1)];
+    });
+  }
+  else result = text.replace(/\b(cr|cut|imp|burn)\b|\bpi(\+\+|\+|--|-)?(?=$|\s)/i, type);
+  return result === text ? `${text} ${type}` : result;
+}
+
+/** Умножить дальность: "150/200" × 1.2 → "180/240", "x1/x1.5" × 2 → "x2/x3". */
+function multiplyRange(text, factor) {
+  return text.replace(/\d+(?:\.\d+)?/g, number => String(Math.round(Number(number) * factor * 100) / 100));
+}
+
+/**
+ * Режим оружия с модификаторами снаряжения (equipment_modifier в GMentor: качество, прицелы, особые стрелы),
+ * как charCalcWeapons. Точность и дальность меняются только у стрелкового режима (у ближнего их нет).
+ * @param {{damage: string, accuracy?: string, range?: string}} mode
+ * @param {object[]} modifiers  Изменения из EquipmentData#weaponModifiers
+ * @param {{thr: string, sw: string}} damage  Урон персонажа, для модификаторов «за кубик»
+ * @returns {{damage: string, accuracy?: string, range?: string, skill: number}}  skill — прибавка к уровню
+ */
+export function modifyWeapon({ damage, accuracy, range }, modifiers, { thr, sw }) {
+  let skill = 0;
+  for ( const modifier of modifiers ) {
+    switch ( modifier.type ) {
+      case "damage": {
+        const dice = modifier.perDice ? damageDice(damage, { thr, sw }) : 1;
+        damage = addWeaponDamage(damage, modifier.amount * dice);
+        break;
+      }
+      case "armorDivisor": damage = setArmorDivisor(damage, modifier.value); break;
+      case "damageType": damage = changeDamageType(damage, modifier.value); break;
+      case "accuracy":
+        if ( accuracy === undefined ) break;
+        // "4" + 1 → "5"; "4+2" (с прицелом) + 1 → "4+2+1", как add в GMentor
+        accuracy = /^[+-]?\d+$/.test(accuracy.trim())
+          ? String(Number(accuracy) + modifier.amount) : `${accuracy}${signed(modifier.amount)}`;
+        break;
+      case "scope":
+        // Бонус прицела пишется отдельно (B278): "4" → "4+2"
+        if ( accuracy !== undefined ) accuracy = `${accuracy}${signed(modifier.amount)}`;
+        break;
+      case "range":
+        if ( range !== undefined ) range = multiplyRange(range, modifier.multiplier);
+        break;
+      case "skill": skill += modifier.amount; break;
+    }
+  }
+  return { damage, accuracy, range, skill };
+}
+
+/** Дальность метательного оружия в долях ST (B270): "x1/x1.5" при ST 10 → "10/15". */
+export function resolveRange(text, st) {
+  const range = String(text).trim();
+  if ( !range.startsWith("x") ) return range;
+  return range.split("/").map(part => {
+    const factor = Number(part.trim().slice(1));
+    return part.trim().startsWith("x") && Number.isFinite(factor) ? String(Math.round(factor * st)) : part;
+  }).join("/");
+}
+
+/**
+ * Хватает ли силы для оружия (B270), как charCalcWeapons в GMentor: "10", "11B" — с сошкой хватает 2/3,
+ * "20M" — на станке, не проверяется. Нечисловое значение ("-") не проверяется.
+ */
+export function lacksStrength(minSt, st) {
+  const text = String(minSt);
+  const value = parseInt(text);
+  if ( !Number.isFinite(value) || text.includes("M") ) return false;
+  if ( text.includes("B") ) return Math.ceil(value * 2 / 3) > st;
+  return value > st;
+}
+
+/**
+ * Парирование или блок оружием (B376): половина уровня + 3 + модификатор оружия.
+ * Модификатор записан как в книге: "0", "-2U", "+2", "0F"; "No" и пусто — защищаться этим оружием нельзя.
+ * @returns {{value: number, note: string}|null}  note — пометка после числа (U — неуравновешенное, F — фехтовальное)
+ */
+export function weaponDefense(text, level) {
+  const match = String(text).trim().match(/^([+-]?\d+)(.*)$/);
+  if ( !match || (level === null) ) return null;
+  return { value: Math.floor(level / 2) + 3 + Number(match[1]), note: match[2].trim() };
 }

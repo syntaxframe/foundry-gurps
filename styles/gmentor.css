@@ -1332,3 +1332,122 @@
   font-size: 0.75rem;
   color: var(--gm-dim);
 }
+
+/* СП против отдельного типа урона под общей СП локации */
+.gmentor .loc-type {
+  font-size: 0.65rem;
+  color: var(--gm-dim);
+}
+
+/* Снаряжение: значок «надето / с собой / не с собой», пометка и эффекты под названием */
+.gmentor .equipment-state {
+  color: var(--gm-accent);
+}
+
+.gmentor .item-table .name .item-notes,
+.gmentor .item-table .name .item-effects {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+/* Лист снаряжения: режим оружия рамкой, поля сеткой, умолчания строками */
+.gmentor.item .weapon-add {
+  margin-left: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.gmentor.item .weapon-mode {
+  margin: 0.5rem 0;
+  border: 1px solid var(--gm-frame);
+}
+
+.gmentor.item .weapon-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: 0.25rem;
+}
+
+.gmentor.item .weapon-fields label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+.gmentor.item .weapon-defaults {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gmentor.item .weapon-defaults li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--gm-line);
+}
+
+.gmentor.item .weapon-defaults select {
+  flex: 0 0 8rem;
+}
+
+.gmentor.item .weapon-defaults input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.gmentor.item .weapon-defaults input.number {
+  flex: 0 0 3.5rem;
+}
+
+/* Контейнеры: содержимое с отступом по глубине вложенности, под названием — вес и цена содержимого */
+.gmentor .tab.equipment td.name {
+  padding-left: calc(4px + var(--depth, 0) * 1.25rem);
+}
+
+.gmentor .container-toggle {
+  display: inline-block;
+  width: 0.8rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .item-table .name .container-contents {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .item-table .name .container-contents.warning {
+  color: var(--gm-warn);
+}
+
+/* Пометки модификаторов у названия оружия: «Отл. качество, Бодкин» */
+.gmentor .weapon-labels {
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+/* Заряженные выстрелы рядом с ёмкостью магазина и кнопка выстрела */
+.gmentor .loaded-ammo {
+  color: var(--gm-accent);
+}
+
+.gmentor .spend-ammo {
+  margin-left: 2px;
+  font-size: 0.7rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .spend-ammo:hover {
+  color: var(--gm-accent);
+}
+
+/* Итоги под списком снаряжения: вес, цена, стартовые деньги — через разделитель, переносятся при нехватке места */
+.gmentor .equipment-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+}

@@ -51,8 +51,8 @@ export default class GMentorActor extends Actor {
       return null;
     }
     const roll = await new Roll(parsed.formula).evaluate();
-    // Урон не может быть меньше 1, у дробящего — меньше 0 (B378)
-    const minimum = parsed.type.startsWith("cr") ? 0 : 1;
+    // Урон не может быть меньше 1, у дробящего — меньше 0 (B378). Перед типом бывает делитель брони: "(2) cr"
+    const minimum = /\bcr\b/.test(parsed.type) ? 0 : 1;
     const total = Math.max(roll.total, minimum);
     const flavor = `<h3>${label}</h3><p>${game.i18n.localize("GMENTOR.Roll.Damage")}: <strong>${total}</strong> ${parsed.type}</p>`;
     return roll.toMessage({ speaker: ChatMessage.getSpeaker({ actor: this }), flavor });

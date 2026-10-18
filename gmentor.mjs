@@ -17,7 +17,9 @@ Hooks.once("init", () => {
   });
 
   // Библиотеки, из которых кнопка «+» на листе предлагает предметы: тип предмета → id компендиума
-  CONFIG.GMENTOR = { libraries: { advantage: "gmentor.advantages", skill: "gmentor.skills" } };
+  CONFIG.GMENTOR = {
+    libraries: { advantage: "gmentor.advantages", skill: "gmentor.skills", equipment: "gmentor.equipment" }
+  };
 
   CONFIG.Actor.trackableAttributes.character = { bar: ["hp", "fp"], value: [] };
   registerConditions();

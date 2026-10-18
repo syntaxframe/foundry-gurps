@@ -103,6 +103,8 @@
       <div class="location">
         <span class="loc-name">{{localize (concat "GMENTOR.Location." key)}}</span>
         <b class="loc-dr" data-tooltip="GMENTOR.DR">{{dr}}</b>
+        {{!-- СП против отдельного типа урона, как у кольчуги 4/2 против дробящего --}}
+        {{#each types}}<span class="loc-type" data-tooltip="GMENTOR.DRByType">{{type}} {{dr}}</span>{{/each}}
         {{#if roll}}<span class="loc-roll" data-tooltip="GMENTOR.LocationRoll">{{roll}}</span>{{/if}}
         <span class="loc-hit" data-tooltip="GMENTOR.LocationToHit">{{toHit}}</span>
       </div>
@@ -156,18 +158,121 @@
     {{/each}}
   </div>
 
-  {{#if weapons.length}}
+  {{!-- Режимы надетого оружия. Уровень, урон и защиты — броски; подсказка у уровня — откуда он взялся --}}
+  {{#*inline "weaponCells"}}
+  <td class="name">{{item.name}}{{#if item.system.modifierLabels.length}} <span class="weapon-labels">{{#each item.system.modifierLabels}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</span>{{/if}}</td>
+  <td>{{mode.usage}}</td>
+  <td data-tooltip-text="{{levelHint}}">
+    {{#if (ne mode.level null)}}<a class="rollable" data-action="roll" data-label="{{item.name}}" data-value="{{mode.level}}">{{mode.level}}</a>{{else}}—{{/if}}
+  </td>
+  <td>
+    {{#if mode.rollable}}<a class="rollable" data-action="rollDamage" data-label="{{item.name}}" data-damage="{{mode.damageText}}"
+      {{#if (ne mode.damageText mode.damage)}}data-tooltip-text="{{mode.damage}}"{{/if}}>{{mode.damageText}}</a>{{else}}{{mode.damageText}}{{/if}}
+  </td>
+  {{/inline}}
+
+  {{#*inline "weaponHeaders"}}
+  <th class="name">{{localize "GMENTOR.WeaponField.weapon"}}</th>
+  <th>{{localize "GMENTOR.WeaponField.usage"}}</th>
+  <th>{{localize "GMENTOR.WeaponField.level"}}</th>
+  <th>{{localize "GMENTOR.WeaponField.damage"}}</th>
+  {{/inline}}
+
+  {{!-- Парирование или блок режима: бросок, если этим оружием можно защищаться --}}
+  {{#*inline "defenseCell"}}
+  <td>
+    {{#if result}}
+    <a class="rollable" data-action="roll" data-label="{{localize (concat "GMENTOR.Defense." defense)}} ({{item.name}})" data-value="{{result.value}}">{{result.value}}{{result.note}}</a>
+    {{else}}—{{/if}}
+  </td>
+  {{/inline}}
+
+  {{#if meleeWeapons.length}}
   <div class="card weapons">
-    <h3>{{localize "GMENTOR.Weapons"}}</h3>
+    <h3>{{localize "GMENTOR.MeleeWeapons"}}</h3>
     <table class="item-table">
-      {{#each weapons}}
-      <tr data-item-id="{{id}}">
-        <td class="name">{{name}}</td>
-        <td>{{#if (ne system.skillLevel null)}}<a class="rollable" data-action="roll" data-label="{{name}}" data-value="{{system.skillLevel}}">{{system.skillLevel}}</a>{{else}}—{{/if}}</td>
-        <td><a class="rollable" data-action="rollDamage" data-label="{{name}}" data-damage="{{system.damage}}">{{system.damage}}</a></td>
-        <td>{{system.reach}}</td>
-      </tr>
-      {{/each}}
+      <thead><tr>
+        {{> weaponHeaders}}
+        <th>{{localize "GMENTOR.WeaponField.reach"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.parry"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.block"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.minSt"}}</th>
+      </tr></thead>
+      <tbody>
+        {{#each meleeWeapons}}
+        <tr data-item-id="{{item.id}}">
+          {{> weaponCells}}
+          <td>{{mode.reach}}</td>
+          {{> defenseCell defense="parry" result=mode.parryResult}}
+          {{> defenseCell defense="block" result=mode.blockResult}}
+          <td class="{{#if mode.weak}}warning{{/if}}" {{#if mode.weak}}data-tooltip="GMENTOR.WeakHint"{{/if}}>{{mode.minSt}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+  {{/if}}
+
+  {{#if rangedWeapons.length}}
+  <div class="card weapons">
+    <h3>{{localize "GMENTOR.RangedWeapons"}}</h3>
+    <table class="item-table">
+      <thead><tr>
+        {{> weaponHeaders}}
+        <th>{{localize "GMENTOR.WeaponField.accuracy"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.range"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.rateOfFire"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.shots"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.bulk"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.recoil"}}</th>
+        <th>{{localize "GMENTOR.WeaponField.minSt"}}</th>
+      </tr></thead>
+      <tbody>
+        {{#each rangedWeapons}}
+        <tr data-item-id="{{item.id}}">
+          {{> weaponCells}}
+          <td {{#if (ne mode.accuracyText mode.accuracy)}}data-tooltip-text="{{mode.accuracy}}"{{/if}}>{{mode.accuracyText}}</td>
+          <td {{#if (ne mode.rangeText mode.range)}}data-tooltip-text="{{mode.range}}"{{/if}}>{{mode.rangeText}}</td>
+          <td>{{mode.rateOfFire}}</td>
+          {{!-- Выстрелы по книге и сколько осталось: количество заряженного боеприпаса, кнопка — выстрел --}}
+          <td {{#if mode.ammo}}data-tooltip-text="{{localize "GMENTOR.WeaponField.ammo"}}: {{mode.ammo}}"{{/if}}>
+            {{mode.shots}}
+            {{#with item.system.loadedAmmo as |ammo|}}
+            <span class="loaded-ammo {{#unless ammo.system.quantity}}warning{{/unless}}" data-tooltip-text="{{ammo.name}}">· {{ammo.system.quantity}}</span>
+            <a class="spend-ammo" data-action="spendAmmo" data-ammo-id="{{ammo.id}}" data-tooltip="GMENTOR.SpendAmmo"><i class="fa-solid fa-minus" inert></i></a>
+            {{/with}}
+          </td>
+          <td>{{mode.bulk}}</td>
+          <td>{{mode.recoil}}</td>
+          <td class="{{#if mode.weak}}warning{{/if}}" {{#if mode.weak}}data-tooltip="GMENTOR.WeakHint"{{/if}}>{{mode.minSt}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+  {{/if}}
+
+  {{!-- Транспорт и ездовые животные (B462–B465): уровень управления — бросок, подсказка — откуда он --}}
+  {{#if vehicles.length}}
+  <div class="card weapons vehicles">
+    <h3>{{localize "GMENTOR.Vehicles"}}</h3>
+    <table class="item-table">
+      <thead><tr>
+        <th class="name">{{localize "GMENTOR.VehicleField.vehicle"}}</th>
+        <th data-tooltip="GMENTOR.VehicleLevelHint">{{localize "GMENTOR.WeaponField.level"}}</th>
+        {{#each vehicleColumns}}<th data-tooltip="GMENTOR.VehicleFieldHint.{{this}}">{{localize (concat "GMENTOR.VehicleField." this)}}</th>{{/each}}
+      </tr></thead>
+      <tbody>
+        {{#each vehicles}}
+        <tr data-item-id="{{item.id}}">
+          <td class="name">{{item.name}}</td>
+          <td data-tooltip-text="{{levelHint}}">
+            {{#if (ne vehicle.level null)}}<a class="rollable" data-action="roll" data-label="{{item.name}}" data-value="{{vehicle.level}}">{{vehicle.level}}</a>{{else}}—{{/if}}
+          </td>
+          {{#each @root.vehicleColumns as |field|}}<td>{{lookup ../vehicle field}}</td>{{/each}}
+        </tr>
+        {{/each}}
+      </tbody>
     </table>
   </div>
   {{/if}}

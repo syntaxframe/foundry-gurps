@@ -1,5 +1,9 @@
 <section class="body">
   <div class="form-group">
+    <label>{{localize "GMENTOR.TraitNotes"}}</label>
+    <input type="text" name="system.notes" value="{{system.notes}}">
+  </div>
+  <div class="form-group">
     <label>{{localize "GMENTOR.Quantity"}}</label>
     <input type="number" name="system.quantity" value="{{system.quantity}}" min="0">
   </div>
@@ -12,26 +16,178 @@
     <input type="number" name="system.value" value="{{system.value}}" min="0" step="any">
   </div>
   <div class="form-group">
-    <label>{{localize "GMENTOR.TL"}}</label>
+    <label>{{localize "GMENTOR.TL"}} / <span data-tooltip="GMENTOR.LegalityClassHint">{{localize "GMENTOR.LegalityClass"}}</span></label>
     <input type="text" name="system.techLevel" value="{{system.techLevel}}">
+    <input type="text" name="system.legalityClass" value="{{system.legalityClass}}">
   </div>
   <div class="form-group">
     <label>{{localize "GMENTOR.State.label"}}</label>
     <select name="system.state">{{selectOptions choices.state selected=system.state localize=true}}</select>
   </div>
+  <div class="form-group">
+    <label data-tooltip="GMENTOR.ContainerHint">{{localize "GMENTOR.Container"}}</label>
+    <input type="checkbox" name="system.isContainer" {{checked system.isContainer}}>
+  </div>
+  {{#if system.isContainer}}
+  <div class="form-group">
+    <label data-tooltip="GMENTOR.CapacityHint">{{localize "GMENTOR.Capacity"}}, {{localize "GMENTOR.Kg"}}</label>
+    <input type="number" name="system.capacity" value="{{system.capacity}}" min="0" step="any">
+  </div>
+  {{/if}}
 
-  <h4>{{localize "GMENTOR.Weapon"}}</h4>
+  <h4>
+    {{localize "GMENTOR.Weapon"}}
+    {{#each weaponModes}}
+    <a class="weapon-add" data-action="addWeapon" data-type="{{this}}"><i class="fa-solid fa-plus" inert></i>
+      {{localize (concat "GMENTOR.WeaponMode." this)}}</a>
+    {{/each}}
+  </h4>
+  {{!--
+    Режим оружия: все поля в форме, поэтому массив режимов из формы заменяет сохранённый целиком.
+    У вложенных циклов явные параметры блока: @index внутри них не меняется
+  --}}
+  {{#each system.weapons as |mode index|}}
+  <fieldset class="weapon-mode">
+    <legend>
+      {{localize (concat "GMENTOR.WeaponMode." mode.type)}}
+      <a data-action="deleteWeapon" data-index="{{index}}" data-tooltip="GMENTOR.Delete"><i class="fa-solid fa-trash" inert></i></a>
+    </legend>
+    <input type="hidden" name="system.weapons.{{index}}.type" value="{{mode.type}}">
+    <div class="weapon-fields">
+      {{#each (lookup @root.weaponFields mode.type) as |field|}}
+      <label>
+        <span>{{localize (concat "GMENTOR.WeaponField." field)}}</span>
+        <input type="text" name="system.weapons.{{index}}.{{field}}" value="{{lookup mode field}}">
+      </label>
+      {{/each}}
+    </div>
+    <ul class="weapon-defaults">
+      {{#each mode.defaults as |entry position|}}
+      <li>
+        <select name="system.weapons.{{index}}.defaults.{{position}}.type">{{selectOptions @root.choices.defaultType selected=entry.type localize=true}}</select>
+        <input type="text" name="system.weapons.{{index}}.defaults.{{position}}.name" value="{{entry.name}}" placeholder="{{localize "GMENTOR.Skill"}}">
+        <input type="text" name="system.weapons.{{index}}.defaults.{{position}}.specialization" value="{{entry.specialization}}" placeholder="{{localize "GMENTOR.Specialization"}}">
+        <input class="number" type="number" name="system.weapons.{{index}}.defaults.{{position}}.modifier" value="{{entry.modifier}}">
+        <a data-action="deleteWeaponDefault" data-index="{{index}}" data-default="{{position}}" data-tooltip="GMENTOR.Delete">
+          <i class="fa-solid fa-trash" inert></i></a>
+      </li>
+      {{/each}}
+    </ul>
+    <p class="feature-add">
+      <a data-action="addWeaponDefault" data-index="{{index}}" data-tooltip="GMENTOR.WeaponDefaultHint">
+        <i class="fa-solid fa-plus" inert></i> {{localize "GMENTOR.WeaponDefault"}}</a>
+    </p>
+  </fieldset>
+  {{/each}}
+
+  {{!-- Транспорт или ездовое животное (B462–B465): поля как в книге и умолчания для уровня управления --}}
+  <h4>
+    {{localize "GMENTOR.Vehicle"}}
+    {{#if system.vehicle}}
+    <a data-action="deleteVehicle" data-tooltip="GMENTOR.Delete"><i class="fa-solid fa-trash" inert></i></a>
+    {{else}}
+    <a class="weapon-add" data-action="addVehicle"><i class="fa-solid fa-plus" inert></i> {{localize "GMENTOR.Add"}}</a>
+    {{/if}}
+  </h4>
+  {{#with system.vehicle as |vehicle|}}
+  <fieldset class="weapon-mode">
+    <div class="weapon-fields">
+      {{#each @root.vehicleFields as |field|}}
+      <label data-tooltip="GMENTOR.VehicleFieldHint.{{field}}">
+        <span>{{localize (concat "GMENTOR.VehicleField." field)}}</span>
+        <input type="text" name="system.vehicle.{{field}}" value="{{lookup vehicle field}}">
+      </label>
+      {{/each}}
+    </div>
+    <ul class="weapon-defaults">
+      {{#each vehicle.defaults as |entry position|}}
+      <li>
+        <select name="system.vehicle.defaults.{{position}}.type">{{selectOptions @root.choices.defaultType selected=entry.type localize=true}}</select>
+        <input type="text" name="system.vehicle.defaults.{{position}}.name" value="{{entry.name}}" placeholder="{{localize "GMENTOR.Skill"}}">
+        <input type="text" name="system.vehicle.defaults.{{position}}.specialization" value="{{entry.specialization}}" placeholder="{{localize "GMENTOR.Specialization"}}">
+        <input class="number" type="number" name="system.vehicle.defaults.{{position}}.modifier" value="{{entry.modifier}}">
+        <a data-action="deleteVehicleDefault" data-default="{{position}}" data-tooltip="GMENTOR.Delete"><i class="fa-solid fa-trash" inert></i></a>
+      </li>
+      {{/each}}
+    </ul>
+    <p class="feature-add">
+      <a data-action="addVehicleDefault" data-tooltip="GMENTOR.VehicleLevelHint">
+        <i class="fa-solid fa-plus" inert></i> {{localize "GMENTOR.WeaponDefault"}}</a>
+    </p>
+  </fieldset>
+  {{/with}}
+
+  {{!-- Модификатор оружия: кладётся внутрь оружия и меняет все его режимы (equipment_modifier в GMentor) --}}
+  <h4 data-tooltip="GMENTOR.WeaponModifierHint">
+    <label><input type="checkbox" name="system.isModifier" {{checked system.isModifier}}> {{localize "GMENTOR.WeaponModifier"}}</label>
+  </h4>
+  {{#if system.isModifier}}
   <div class="form-group">
-    <label data-tooltip="GMENTOR.DamageHint">{{localize "GMENTOR.Roll.Damage"}}</label>
-    <input type="text" name="system.damage" value="{{system.damage}}" placeholder="sw+2 cut">
+    <label data-tooltip="GMENTOR.ModifierLabelHint">{{localize "GMENTOR.ModifierLabel"}}</label>
+    <input type="text" name="system.label" value="{{system.label}}">
   </div>
   <div class="form-group">
-    <label data-tooltip="GMENTOR.SkillHint">{{localize "GMENTOR.Skill"}}</label>
-    <input type="text" name="system.skill" value="{{system.skill}}">
+    <label data-tooltip="GMENTOR.AmmunitionHint">{{localize "GMENTOR.Ammunition"}}</label>
+    <input type="checkbox" name="system.ammunition" {{checked system.ammunition}}>
   </div>
-  <div class="form-group">
-    <label>{{localize "GMENTOR.Reach"}} / {{localize "GMENTOR.MinST"}}</label>
-    <input type="text" name="system.reach" value="{{system.reach}}" placeholder="1">
-    <input type="text" name="system.minSt" value="{{system.minSt}}" placeholder="10">
-  </div>
+  <ul class="features">
+    {{#each system.weaponModifiers as |change index|}}
+    <li class="feature">
+      <input type="hidden" name="system.weaponModifiers.{{index}}.type" value="{{change.type}}">
+      <span class="feature-type">{{localize (concat "GMENTOR.WeaponModifierType." change.type)}}</span>
+      <span class="feature-fields">
+        {{#each (lookup @root.weaponModifierFields change.type) as |field|}}
+        {{#if (eq field "perDice")}}
+        <label class="feature-per-level"><input type="checkbox" name="system.weaponModifiers.{{index}}.perDice" {{checked change.perDice}}>
+          {{localize "GMENTOR.PerDice"}}</label>
+        {{else if (eq field "damageType")}}
+        <input type="text" name="system.weaponModifiers.{{index}}.value" value="{{change.value}}" placeholder="pi, ++, --"
+          data-tooltip="GMENTOR.ModifierDamageTypeHint">
+        {{else}}
+        <input class="feature-amount" type="number" name="system.weaponModifiers.{{index}}.{{field}}" value="{{lookup change field}}" step="any">
+        {{/if}}
+        {{/each}}
+      </span>
+      <a data-action="deleteWeaponModifier" data-index="{{index}}" data-tooltip="GMENTOR.Delete"><i class="fa-solid fa-trash" inert></i></a>
+    </li>
+    {{/each}}
+  </ul>
+  <p class="feature-add">
+    {{localize "GMENTOR.AddFeature"}}:
+    {{#each weaponModifierTypes}}
+    <a data-action="addWeaponModifier" data-type="{{this}}"><i class="fa-solid fa-plus" inert></i>
+      {{localize (concat "GMENTOR.WeaponModifierType." this)}}</a>
+    {{/each}}
+  </p>
+  {{/if}}
+
+  {{!-- Требования: все должны выполняться, иначе предмет на листе подсвечивается (prereq_list в GMentor) --}}
+  <h4 data-tooltip="GMENTOR.PrereqsHint">{{localize "GMENTOR.Prereqs"}}</h4>
+  <ul class="features">
+    {{#each system.prereqs as |prereq index|}}
+    <li class="feature">
+      <input type="hidden" name="system.prereqs.{{index}}.type" value="{{prereq.type}}">
+      <label class="feature-per-level" data-tooltip="GMENTOR.PrereqHasHint">
+        <input type="checkbox" name="system.prereqs.{{index}}.has" {{checked prereq.has}}> {{localize "GMENTOR.PrereqHas"}}</label>
+      <span class="feature-fields">
+        <span class="feature-pair">
+          <select name="system.prereqs.{{index}}.nameCompare">{{selectOptions @root.choices.compare selected=prereq.nameCompare localize=true}}</select>
+          <input type="text" name="system.prereqs.{{index}}.name" value="{{prereq.name}}" placeholder="vacc suit">
+        </span>
+        <span class="feature-pair">
+          <select name="system.prereqs.{{index}}.specializationCompare" data-tooltip="GMENTOR.Specialization">{{selectOptions @root.choices.compare selected=prereq.specializationCompare localize=true}}</select>
+          <input type="text" name="system.prereqs.{{index}}.specialization" value="{{prereq.specialization}}" placeholder="{{localize "GMENTOR.Specialization"}}">
+        </span>
+      </span>
+      <a data-action="deletePrereq" data-index="{{index}}" data-tooltip="GMENTOR.Delete"><i class="fa-solid fa-trash" inert></i></a>
+    </li>
+    {{/each}}
+  </ul>
+  <p class="feature-add">
+    {{localize "GMENTOR.AddFeature"}}:
+    <a data-action="addPrereq" data-type="skill"><i class="fa-solid fa-plus" inert></i> {{localize "GMENTOR.Skill"}}</a>
+  </p>
+
+  <h4 data-tooltip="GMENTOR.EquipmentFeaturesHint">{{localize "GMENTOR.Features"}}</h4>
+  {{> "systems/gmentor/templates/item/features.hbs" features=system.features prefix="system.features" modifier=""}}
 </section>

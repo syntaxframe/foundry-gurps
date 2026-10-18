@@ -83,6 +83,17 @@
         "PLAYER": "OBSERVER",
         "ASSISTANT": "OWNER"
       }
+    },
+    {
+      "name": "equipment",
+      "label": "Снаряжение",
+      "path": "packs/equipment",
+      "type": "Item",
+      "system": "gmentor",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
     }
   ],
   "initiative": "@speed + @dx / 100",

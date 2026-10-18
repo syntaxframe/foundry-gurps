@@ -1,3 +1,1 @@
-2026/10/18-16:07:32.650080 7feaf53fd640 Table #5: 669 entries OK
-2026/10/18-16:07:32.650175 7feaf53fd640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages/MANIFEST-000001: OK
-2026/10/18-16:07:32.655061 7feaf53fd640 **** Repaired leveldb /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages; recovered 1 files; 1310067 bytes. Some data may have been lost. ****
+2026/10/19-01:24:38.705808 75593ffff640 Delete type=3 #1

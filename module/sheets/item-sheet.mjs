@@ -1,12 +1,35 @@
-import { BONUS_TARGETS, COMPARE } from "../rules.mjs";
+import { VEHICLE_FIELDS, WEAPON_DEFAULT_TYPES } from "../data/items.mjs";
+import { BONUS_TARGETS, COMPARE, DR_LOCATIONS } from "../rules.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
 
 const TEMPLATES = "systems/gmentor/templates/item";
 
-/** Типы эффектов черты (см. features в items.mjs). Поля нового эффекта заполняет схема. */
-const FEATURE_TYPES = ["attribute", "reaction", "skill", "spell"];
+/** Типы эффектов черты и снаряжения (см. features в items.mjs). Поля нового эффекта заполняет схема. */
+const FEATURE_TYPES = ["attribute", "dr", "reaction", "skill", "spell", "wealth"];
+
+/** Текстовые поля режимов оружия в порядке таблицы на листе персонажа (см. weaponMode в items.mjs). */
+const WEAPON_FIELDS = {
+  melee: ["usage", "damage", "reach", "parry", "block", "minSt"],
+  ranged: ["usage", "damage", "accuracy", "range", "rateOfFire", "shots", "ammo", "bulk", "recoil", "minSt"]
+};
+
+/**
+ * Поля изменений модификатора оружия по типам (см. weaponModifiers в items.mjs). Числовые поля — по имени,
+ * perDice — флажок, damageType — текстовое поле value.
+ */
+const WEAPON_MODIFIER_FIELDS = {
+  damage: ["amount", "perDice"],
+  armorDivisor: ["value"],
+  damageType: ["damageType"],
+  accuracy: ["amount"],
+  scope: ["amount"],
+  range: ["multiplier"],
+  skill: ["amount"],
+  cost: ["multiplier"],
+  weight: ["multiplier"]
+};
 
 /** Один лист на все типы предметов: поля тела берутся из шаблона templates/item/<тип>.hbs. */
 export default class GMentorItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
@@ -21,7 +44,19 @@ export default class GMentorItemSheet extends HandlebarsApplicationMixin(ItemShe
       deleteModifier: GMentorItemSheet.#onDeleteModifier,
       toggleModifier: GMentorItemSheet.#onToggleModifier,
       addFeature: GMentorItemSheet.#onAddFeature,
-      deleteFeature: GMentorItemSheet.#onDeleteFeature
+      deleteFeature: GMentorItemSheet.#onDeleteFeature,
+      addWeapon: GMentorItemSheet.#onAddWeapon,
+      deleteWeapon: GMentorItemSheet.#onDeleteWeapon,
+      addWeaponDefault: GMentorItemSheet.#onAddWeaponDefault,
+      deleteWeaponDefault: GMentorItemSheet.#onDeleteWeaponDefault,
+      addWeaponModifier: GMentorItemSheet.#onAddWeaponModifier,
+      deleteWeaponModifier: GMentorItemSheet.#onDeleteWeaponModifier,
+      addVehicle: GMentorItemSheet.#onAddVehicle,
+      deleteVehicle: GMentorItemSheet.#onDeleteVehicle,
+      addVehicleDefault: GMentorItemSheet.#onAddVehicleDefault,
+      deleteVehicleDefault: GMentorItemSheet.#onDeleteVehicleDefault,
+      addPrereq: GMentorItemSheet.#onAddPrereq,
+      deletePrereq: GMentorItemSheet.#onDeletePrereq
     }
   };
 
@@ -57,9 +92,17 @@ export default class GMentorItemSheet extends HandlebarsApplicationMixin(ItemShe
           multiplier: "GMENTOR.CostType.multiplier" },
         affects: { total: "GMENTOR.Affects.total", base: "GMENTOR.Affects.base", levels: "GMENTOR.Affects.levels" },
         bonusTarget: Object.fromEntries(BONUS_TARGETS.map(key => [key, `GMENTOR.BonusTarget.${key}`])),
-        compare: Object.fromEntries(COMPARE.map(key => [key, `GMENTOR.Compare.${key.replaceAll(" ", "-")}`]))
+        compare: Object.fromEntries(COMPARE.map(key => [key, `GMENTOR.Compare.${key.replaceAll(" ", "-")}`])),
+        drLocation: Object.fromEntries(DR_LOCATIONS.map(key => [key, `GMENTOR.Location.${key}`])),
+        defaultType: Object.fromEntries(WEAPON_DEFAULT_TYPES.map(key =>
+          [key, key === "skill" ? "GMENTOR.Skill" : `GMENTOR.Attribute.${key}`]))
       },
       featureTypes: FEATURE_TYPES,
+      weaponModes: Object.keys(WEAPON_FIELDS),
+      weaponFields: WEAPON_FIELDS,
+      vehicleFields: VEHICLE_FIELDS,
+      weaponModifierTypes: Object.keys(WEAPON_MODIFIER_FIELDS),
+      weaponModifierFields: WEAPON_MODIFIER_FIELDS,
       expandedModifiers: Object.fromEntries([...this.#expandedModifiers].map(index => [index, true])),
       enrichedDescription: await foundry.applications.ux.TextEditor.implementation.enrichHTML(
         item.system.description, { secrets: item.isOwner, relativeTo: item }
@@ -125,6 +168,74 @@ export default class GMentorItemSheet extends HandlebarsApplicationMixin(ItemShe
     }
     change(source.modifiers[Number(modifier)].features);
     return this.item.update({ "system.modifiers": source.modifiers });
+  }
+
+  // Режимы оружия тоже массив: добавление и удаление отправляют его целиком
+
+  static #onAddWeapon(event, target) {
+    return this.#updateWeapons(weapons => weapons.push({ type: target.dataset.type }));
+  }
+
+  static #onDeleteWeapon(event, target) {
+    return this.#updateWeapons(weapons => weapons.splice(Number(target.dataset.index), 1));
+  }
+
+  static #onAddWeaponDefault(event, target) {
+    return this.#updateWeapons(weapons => weapons[Number(target.dataset.index)].defaults.push({}));
+  }
+
+  static #onDeleteWeaponDefault(event, target) {
+    const { index, default: entry } = target.dataset;
+    return this.#updateWeapons(weapons => weapons[Number(index)].defaults.splice(Number(entry), 1));
+  }
+
+  static #onAddWeaponModifier(event, target) {
+    const changes = [...this.item.system.toObject().weaponModifiers, { type: target.dataset.type }];
+    return this.item.update({ "system.weaponModifiers": changes });
+  }
+
+  static #onDeleteWeaponModifier(event, target) {
+    const changes = this.item.system.toObject().weaponModifiers;
+    changes.splice(Number(target.dataset.index), 1);
+    return this.item.update({ "system.weaponModifiers": changes });
+  }
+
+  // Транспорт — один объект с умолчаниями; пустой объект схема заполнит пустыми полями
+
+  static #onAddVehicle() {
+    return this.item.update({ "system.vehicle": {} });
+  }
+
+  static #onDeleteVehicle() {
+    return this.item.update({ "system.vehicle": null });
+  }
+
+  static #onAddVehicleDefault() {
+    const defaults = [...this.item.system.toObject().vehicle.defaults, {}];
+    return this.item.update({ "system.vehicle.defaults": defaults });
+  }
+
+  static #onDeleteVehicleDefault(event, target) {
+    const defaults = this.item.system.toObject().vehicle.defaults;
+    defaults.splice(Number(target.dataset.default), 1);
+    return this.item.update({ "system.vehicle.defaults": defaults });
+  }
+
+  static #onAddPrereq(event, target) {
+    const prereqs = [...this.item.system.toObject().prereqs, { type: target.dataset.type }];
+    return this.item.update({ "system.prereqs": prereqs });
+  }
+
+  static #onDeletePrereq(event, target) {
+    const prereqs = this.item.system.toObject().prereqs;
+    prereqs.splice(Number(target.dataset.index), 1);
+    return this.item.update({ "system.prereqs": prereqs });
+  }
+
+  #updateWeapons(change) {
+    const weapons = this.item.system.toObject().weapons;
+    change(weapons);
+    return this.item.update({ "system.weapons": weapons });
   }
 
   /** Модификаторы, у которых раскрыта строка с подробностями (индексы). */
