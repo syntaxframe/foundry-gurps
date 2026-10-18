@@ -1,0 +1,10 @@
+{{!-- Очки умения или заклинания в квадратных скобках (правятся прямо в строке), атрибут и уровень --}}
+<label class="item-points" data-tooltip="GMENTOR.Points.label">
+  [<input type="number" data-item-field="system.points" value="{{item.system.points}}" min="0">]
+</label>
+<span class="item-stat">{{stat}}</span>
+{{#if (ne item.system.level null)}}
+<a class="item-level rollable" data-action="roll" data-label="{{item.name}}" data-value="{{item.system.level}}">{{item.system.level}}</a>
+{{else}}
+<span class="item-level">—</span>
+{{/if}}

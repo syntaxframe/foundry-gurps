@@ -26,6 +26,8 @@ Hooks.once("init", () => {
   Items.registerSheet("gmentor", GMentorItemSheet, { makeDefault: true, label: "GMENTOR.Sheet.Item", themes: null });
 
   foundry.applications.handlebars.loadTemplates([
-    "systems/gmentor/templates/actor/item-row.hbs"
+    "systems/gmentor/templates/actor/item-row.hbs",
+    "systems/gmentor/templates/actor/list-header.hbs",
+    "systems/gmentor/templates/actor/learned-values.hbs"
   ]);
 });

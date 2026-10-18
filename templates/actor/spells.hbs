@@ -1,0 +1,25 @@
+<section class="tab spells {{tab.cssClass}}" data-group="{{tab.group}}" data-tab="{{tab.id}}">
+  <div class="card item-list">
+    {{> "systems/gmentor/templates/actor/list-header.hbs" list=spells}}
+    <ol>
+      {{#each spells.rows}}
+      <li class="item-row draggable" data-item-id="{{item.id}}">
+        <a class="item-name" data-action="editItem">{{item.name}}</a>
+        {{> "systems/gmentor/templates/actor/item-row.hbs"}}
+        {{> "systems/gmentor/templates/actor/learned-values.hbs"}}
+        <div class="item-details">
+          {{#if item.system.college}}<span>{{item.system.college}}</span>{{/if}}
+          {{#if item.system.spellClass}}<span>{{item.system.spellClass}}</span>{{/if}}
+          {{#if item.system.castingCost}}
+          <span>{{localize "GMENTOR.Spell.cost"}}: {{item.system.castingCost}}{{#if item.system.maintain}}/{{item.system.maintain}}{{/if}}</span>
+          {{/if}}
+          {{#if item.system.castingTime}}
+          <span>{{localize "GMENTOR.Spell.time"}}: {{item.system.castingTime}}{{#if item.system.duration}}/{{item.system.duration}}{{/if}}</span>
+          {{/if}}
+        </div>
+        {{#if description}}<div class="item-description">{{{description}}}</div>{{/if}}
+      </li>
+      {{/each}}
+    </ol>
+  </div>
+</section>

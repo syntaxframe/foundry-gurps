@@ -55,6 +55,8 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       createItem: CharacterSheet.#onCreateItem,
       editItem: CharacterSheet.#onEditItem,
       deleteItem: CharacterSheet.#onDeleteItem,
+      sortByName: CharacterSheet.#onSortByName,
+      toggleDescriptions: CharacterSheet.#onToggleDescriptions,
       addCondition: CharacterSheet.#onAddCondition,
       removeCondition: CharacterSheet.#onRemoveCondition,
       toggleConditionDescription: CharacterSheet.#onToggleConditionDescription
@@ -65,15 +67,15 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     header: { template: `${TEMPLATES}/header.hbs` },
     tabs: { template: "templates/generic/tab-navigation.hbs" },
     stats: { template: `${TEMPLATES}/stats.hbs`, scrollable: [""] },
-    traits: { template: `${TEMPLATES}/traits.hbs`, scrollable: [""] },
-    skills: { template: `${TEMPLATES}/skills.hbs`, scrollable: [""] },
+    abilities: { template: `${TEMPLATES}/abilities.hbs`, scrollable: [""] },
+    spells: { template: `${TEMPLATES}/spells.hbs`, scrollable: [""] },
     equipment: { template: `${TEMPLATES}/equipment.hbs`, scrollable: [""] },
     notes: { template: `${TEMPLATES}/notes.hbs`, scrollable: [""] }
   };
 
   static TABS = {
     primary: {
-      tabs: [{ id: "stats" }, { id: "traits" }, { id: "skills" }, { id: "equipment" }, { id: "notes" }],
+      tabs: [{ id: "stats" }, { id: "abilities" }, { id: "spells" }, { id: "equipment" }, { id: "notes" }],
       initial: "stats",
       labelPrefix: "GMENTOR.Tab"
     }
@@ -98,7 +100,6 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const actor = this.actor;
     const system = actor.system;
     const byKind = items => items.sort((a, b) => a.sort - b.sort);
-    const advantages = byKind(actor.itemTypes.advantage);
     Object.assign(context, {
       actor,
       system,
@@ -114,11 +115,9 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
         { label: "GMENTOR.Punch", value: system.damage.punch },
         { label: "GMENTOR.Kick", value: system.damage.kick }
       ].map(tile => ({ ...tile, damage: `${tile.value} cr` })),
-      advantages: advantages.filter(i => (i.system.cost >= 0) && !i.system.quirk),
-      disadvantages: advantages.filter(i => (i.system.cost < 0) && !i.system.quirk),
-      quirks: advantages.filter(i => i.system.quirk),
-      skills: byKind(actor.itemTypes.skill),
-      spells: byKind(actor.itemTypes.spell),
+      advantages: await this.#prepareList("advantage", "GMENTOR.AdvantagesList"),
+      skills: await this.#prepareList("skill", "GMENTOR.Skills"),
+      spells: await this.#prepareList("spell", "GMENTOR.Spells"),
       equipment: byKind(actor.itemTypes.equipment),
       weapons: actor.itemTypes.equipment.filter(i => i.system.isWeapon && (i.system.state === "equipped")),
       enrichedNotes: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes, {
@@ -142,6 +141,33 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     fields.splice(-1, 0, { name: "system.sm", value: system.sm, label: "GMENTOR.SM", type: "number", tooltip: "GMENTOR.SMHint" });
     fields.at(-1).type = "textarea";
     return fields;
+  }
+
+  /**
+   * Список предметов одного типа для вкладок «Черты и умения» и «Заклинания». Как в GMentor, преимущества,
+   * недостатки и причуды идут одним списком в порядке игрока. Описания готовим, только если они показаны.
+   */
+  async #prepareList(type, title) {
+    const showDescriptions = this.#shownDescriptions.has(type);
+    const items = this.actor.itemTypes[type].toSorted((a, b) => a.sort - b.sort);
+    const rows = await Promise.all(items.map(async item => ({
+      item,
+      stat: this.#learnedStat(item),
+      description: showDescriptions && item.system.description
+        ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(item.system.description, {
+          secrets: this.actor.isOwner, relativeTo: item
+        })
+        : null
+    })));
+    return { type, title, showDescriptions, rows };
+  }
+
+  /** Атрибут и отставание уровня от него, как gc-stat в GMentor: «ЛВ», «ИН+1», «ЗД−2». */
+  #learnedStat(item) {
+    if ( !["skill", "spell"].includes(item.type) ) return null;
+    const { attribute = "iq", relative } = item.system;
+    const abbr = game.i18n.localize(`GMENTOR.AttributeAbbr.${attribute}`);
+    return relative ? `${abbr}${relative.signedString()}` : abbr;
   }
 
   #prepareRow({ key, path, stat, result, roll = false, step = 1 }) {
@@ -194,6 +220,18 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     return super._processFormData(event, form, formData);
   }
 
+  /**
+   * Очки умения и уровень черты правятся прямо в списке. Такие поля без name: форму персонажа
+   * не отправляем, а обновляем сам предмет.
+   * @inheritDoc
+   */
+  _onChangeForm(formConfig, event) {
+    const field = event.target.dataset.itemField;
+    if ( !field ) return super._onChangeForm(formConfig, event);
+    const value = event.target.valueAsNumber;
+    if ( Number.isFinite(value) ) this.#getItem(event.target)?.update({ [field]: value });
+  }
+
   /** @inheritDoc */
   async _preparePartContext(partId, context, options) {
     context = await super._preparePartContext(partId, context, options);
@@ -232,6 +270,22 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       try { system[key] = JSON.parse(value); } catch { /* строка */ }
     }
     return this.actor.createEmbeddedDocuments("Item", [{ name, type, system }], { renderSheet: true });
+  }
+
+  /** Отсортировать список по названию, как кнопка сортировки в GMentor. Дальше порядок меняется перетаскиванием. */
+  static #onSortByName(event, target) {
+    const items = this.actor.itemTypes[target.dataset.type];
+    const sorted = items.toSorted((a, b) => a.name.localeCompare(b.name, game.i18n.lang));
+    const updates = sorted.map((item, index) => ({ _id: item.id, sort: (index + 1) * CONST.SORT_INTEGER_DENSITY }));
+    return this.actor.updateEmbeddedDocuments("Item", updates);
+  }
+
+  /** Показать или скрыть описания предметов прямо в списке, как show-description-inline в GMentor. */
+  static #onToggleDescriptions(event, target) {
+    const type = target.dataset.type;
+    if ( this.#shownDescriptions.has(type) ) this.#shownDescriptions.delete(type);
+    else this.#shownDescriptions.add(type);
+    return this.render({ parts: [type === "spell" ? "spells" : "abilities"] });
   }
 
   static #onEditItem(event, target) {
@@ -320,4 +374,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** Состояния, у которых на листе раскрыто описание (id эффектов). */
   #expanded = new Set();
+
+  /** Типы предметов, у которых в списке показаны описания. */
+  #shownDescriptions = new Set();
 }

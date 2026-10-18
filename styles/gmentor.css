@@ -561,6 +561,160 @@
   gap: 0.5rem;
 }
 
+/*
+ * Списки «Черты и умения» как в GMentor: серый заголовок с панелью инструментов, строки через тонкую линию.
+ * В строке название, кнопки правки (видны при наведении) и значения справа; подробности — второй строкой.
+ */
+.gmentor .tab.abilities .columns {
+  align-items: start;
+}
+
+.gmentor .item-list {
+  padding: 0 0.5rem;
+}
+
+.gmentor .item-list h3 {
+  margin: 0;
+  padding: 0.3rem 0;
+  border-bottom: none;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--gm-dim);
+}
+
+.gmentor .list-tools {
+  display: inline-flex;
+  gap: 0.6rem;
+}
+
+.gmentor .list-tools a {
+  color: #c9c9c9;
+  transition: color 0.2s;
+}
+
+.gmentor .list-tools a:is(:hover, .active) {
+  color: var(--gm-accent);
+}
+
+.gmentor .item-list ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gmentor .item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  padding: 4px 0;
+  border-top: 1px solid var(--gm-faint);
+  font-size: 0.85rem;
+}
+
+.gmentor .item-row .item-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.gmentor .item-row .controls {
+  visibility: hidden;
+}
+
+.gmentor .item-row:hover .controls {
+  visibility: visible;
+}
+
+.gmentor .item-row .controls a {
+  color: #c9c9c9;
+}
+
+.gmentor .item-row .controls a:hover {
+  color: var(--gm-accent);
+}
+
+.gmentor .item-cost {
+  min-width: 2rem;
+  text-align: right;
+}
+
+/* Очки в скобках: «[4]», цифра — поле ввода без рамки */
+.gmentor .item-points {
+  color: var(--gm-line);
+}
+
+.gmentor .item-row input[type="number"] {
+  width: 2.5ch;
+  height: auto;
+  min-height: 0;
+  line-height: inherit;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.gmentor .item-row input[type="number"]::-webkit-inner-spin-button {
+  display: none;
+}
+
+.gmentor .item-points input {
+  color: var(--gm-cost);
+}
+
+.gmentor .item-stat {
+  min-width: 3rem;
+  text-align: right;
+}
+
+.gmentor .item-level {
+  min-width: 1.75rem;
+  text-align: right;
+}
+
+/* Вторая строка: уровень, самоконтроль, модификаторы, специализация, параметры заклинания */
+.gmentor .item-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .item-details:empty {
+  display: none;
+}
+
+.gmentor .item-details input[type="number"] {
+  color: var(--gm-accent);
+}
+
+.gmentor .item-modifier::before {
+  content: "%";
+  margin-right: 3px;
+  padding: 0 3px;
+  border-radius: 10px;
+  background: var(--gm-line);
+  color: var(--gm-bg);
+  font-size: 0.65rem;
+}
+
+.gmentor .item-description {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--gm-dim);
+}
+
+.gmentor .item-description > :first-child {
+  margin-top: 0;
+}
+
+.gmentor .item-description > :last-child {
+  margin-bottom: 0;
+}
+
 .gmentor .notes prose-mirror,
 .gmentor .description prose-mirror {
   min-height: 200px;
