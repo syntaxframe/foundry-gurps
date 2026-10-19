@@ -3,20 +3,53 @@
     {{> "systems/gmentor/templates/actor/list-header.hbs" list=spells}}
     <ol>
       {{#each spells.rows}}
-      <li class="item-row draggable" data-item-id="{{item.id}}">
+      {{!-- Строка как в списке заклинаний GMentor: класс, «стоим:», «время:»; атаки и требования строками ниже --}}
+      <li class="item-row spell-row draggable {{#if prereqs}}prereq-fail{{/if}}" data-item-id="{{item.id}}">
         <a class="item-name" data-action="editItem">{{item.name}}</a>
+        <span class="spell-summary">
+          {{#if item.system.spellClass}}<span>{{item.system.spellClass}}</span>{{/if}}
+          <span><span class="label">{{localize "GMENTOR.SpellRow.cost"}}</span>{{item.system.castingCost}}/{{item.system.maintain}}</span>
+          <span><span class="label">{{localize "GMENTOR.SpellRow.time"}}</span>{{item.system.castingTime}}/{{item.system.duration}}</span>
+        </span>
         {{> "systems/gmentor/templates/actor/item-row.hbs"}}
         {{> "systems/gmentor/templates/actor/learned-values.hbs"}}
-        <div class="item-details">
-          {{#if item.system.college}}<span>{{item.system.college}}</span>{{/if}}
-          {{#if item.system.spellClass}}<span>{{item.system.spellClass}}</span>{{/if}}
-          {{#if item.system.castingCost}}
-          <span>{{localize "GMENTOR.Spell.cost"}}: {{item.system.castingCost}}{{#if item.system.maintain}}/{{item.system.maintain}}{{/if}}</span>
-          {{/if}}
-          {{#if item.system.castingTime}}
-          <span>{{localize "GMENTOR.Spell.time"}}: {{item.system.castingTime}}{{#if item.system.duration}}/{{item.system.duration}}{{/if}}</span>
-          {{/if}}
+
+        {{#each weapons}}
+        <div class="spell-weapon">
+          <span class="weapon-stats">
+            <span><span class="label">{{localize "GMENTOR.WeaponShort.damage"}}</span>
+              {{#if mode.rollable}}<a class="rollable" data-action="rollDamage" data-label="{{../item.name}}" data-damage="{{mode.damageText}}">{{mode.damageText}}</a>{{else}}{{mode.damageText}}{{/if}}</span>
+            {{#if (eq mode.type "ranged")}}
+            {{#if mode.accuracyText}}<span><span class="label">{{localize "GMENTOR.WeaponShort.accuracy"}}</span>{{mode.accuracyText}}</span>{{/if}}
+            {{#if mode.rangeText}}<span><span class="label">{{localize "GMENTOR.WeaponShort.range"}}</span>{{mode.rangeText}}</span>{{/if}}
+            {{else}}
+            {{#if mode.reach}}<span><span class="label">{{localize "GMENTOR.WeaponShort.reach"}}</span>{{mode.reach}}</span>{{/if}}
+            {{#if mode.parry}}<span><span class="label">{{localize "GMENTOR.WeaponShort.parry"}}</span>{{#if mode.parryResult}}{{mode.parryResult.value}}{{mode.parryResult.note}}{{else}}{{mode.parry}}{{/if}}</span>{{/if}}
+            {{/if}}
+          </span>
+          <span class="weapon-source">{{levelHint}}</span>
+          {{#if (ne mode.level null)}}
+          <a class="weapon-level rollable" data-action="roll" data-label="{{../item.name}}" data-value="{{mode.level}}">{{mode.level}}</a>
+          {{else}}<span class="weapon-level">—</span>{{/if}}
         </div>
+        {{/each}}
+
+        {{!-- Требования, если какое-то не выполнено: выполненные бледно, как prereq-ok в GMentor --}}
+        {{#if prereqs}}
+        <div class="spell-prereqs">
+          <span class="label">{{localize "GMENTOR.Prereq.all"}}</span>
+          {{#each prereqs}}
+          {{#if single}}
+          {{#each entries}}<span class="prereq {{#if met}}met{{/if}}">{{text}}</span>{{/each}}
+          {{else}}
+          <span class="prereq-group {{#if met}}met{{/if}}">
+            <span class="label">{{localize "GMENTOR.Prereq.any"}}</span>
+            {{#each entries}}<span class="prereq {{#if met}}met{{/if}}">{{text}}</span>{{/each}}
+          </span>
+          {{/if}}
+          {{/each}}
+        </div>
+        {{/if}}
         {{#if description}}<div class="item-description">{{{description}}}</div>{{/if}}
       </li>
       {{/each}}

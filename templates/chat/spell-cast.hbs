@@ -1,0 +1,20 @@
+{{!-- Сотворение заклинания: заголовок как сообщение GMentor в Discord, исход, подсказка M9 и энергия к списанию --}}
+<div class="gmentor-roll spell-cast-roll">
+  <h3>{{localize "GMENTOR.SpellCast.rollTitle" spell=spell.name target=casting.target}}</h3>
+  <p class="outcome {{outcome}}">{{localize outcomeLabel}} ({{localize "GMENTOR.Roll.Margin"}} {{numberFormat margin sign=true}})</p>
+  {{#if critical}}<p class="critical">{{critical}}</p>{{/if}}
+  <div class="note-block">
+    <p><b>{{localize "GMENTOR.SpellCast.ritualLabel"}}</b> {{casting.ritual}}</p>
+    <p><b>{{localize "GMENTOR.SpellCast.costLabel"}}</b> {{casting.cost}}</p>
+    <p><b>{{localize "GMENTOR.SpellCast.timeLabel"}}</b> {{casting.time}}</p>
+  </div>
+  <p>
+    <b>{{localize "GMENTOR.SpellCast.spent"}}</b>
+    {{energy.fp}} {{localize "GMENTOR.SpellCast.fp"}}{{#if energy.hp}}, {{energy.hp}} {{localize "GMENTOR.SpellCast.hp"}}{{/if}}
+  </p>
+  {{#if spendable}}
+  <button type="button" class="spend-energy" data-action="spendCastingEnergy">
+    <i class="fa-solid fa-bolt" inert></i> {{localize "GMENTOR.SpellCast.spend"}}
+  </button>
+  {{/if}}
+</div>

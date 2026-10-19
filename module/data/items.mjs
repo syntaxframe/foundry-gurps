@@ -151,6 +151,49 @@ export class SkillData extends LearnedData {
   }
 }
 
+/**
+ * Требования (prereq_list в GMentor). has: false — наоборот, этого быть не должно. Названия — английские
+ * идентификаторы из библиотеки, как в бонусах черт. Проверяет CharacterData#isPrereqMet.
+ */
+const prerequisites = () => new ArrayField(new TypedSchemaField({
+  // Изученное умение (скафандр требует умения «Скафандр»); level — уровень не ниже, 0 — любой
+  skill: {
+    has: new BooleanField({ initial: true }),
+    name: text(),
+    nameCompare: choice(rules.COMPARE, "is"),
+    specialization: text(),
+    specializationCompare: choice(rules.COMPARE, "is anything"),
+    level: integer(0, { min: 0 })
+  },
+  // Изученные заклинания: quantity штук с подходящим названием и школой («6 заклинаний Воздуха»)
+  // или заклинания из collegeCount разных школ (0 — не важно)
+  spell: {
+    has: new BooleanField({ initial: true }),
+    name: text(),
+    nameCompare: choice(rules.COMPARE, "is"),
+    college: text(),
+    collegeCompare: choice(rules.COMPARE, "is anything"),
+    quantity: integer(1, { min: 1 }),
+    collegeCount: integer(0, { min: 0 })
+  },
+  // Черта с уровнем не ниже level; notes — условие на пометку черты («One College (Air)» у Магических способностей)
+  advantage: {
+    has: new BooleanField({ initial: true }),
+    name: text(),
+    nameCompare: choice(rules.COMPARE, "is"),
+    notes: text(),
+    notesCompare: choice(rules.COMPARE, "is anything"),
+    level: integer(0, { min: 0 })
+  },
+  // Атрибут не ниже value; с combinedWith — сумма двух атрибутов (ЛВ + ИН не меньше 30 у Великого желания)
+  attribute: {
+    has: new BooleanField({ initial: true }),
+    which: choice(SkillData.ATTRIBUTES, "iq"),
+    combinedWith: new StringField({ required: true, blank: true, initial: "", choices: ["", ...SkillData.ATTRIBUTES] }),
+    value: integer(10)
+  }
+}));
+
 export class SpellData extends LearnedData {
   static defineSchema() {
     const schema = super.defineSchema();
@@ -163,8 +206,20 @@ export class SpellData extends LearnedData {
       castingCost: text(),
       maintain: text(),
       castingTime: text(),
-      duration: text()
+      duration: text(),
+      // Требования (M8): выполнены все группы, а в группе — хотя бы одно требование. Любое сочетание «и»
+      // и «или» из библиотеки сборщик приводит к этому виду
+      prereqGroups: new ArrayField(new SchemaField({ anyOf: prerequisites() })),
+      // Атака заклинанием (Огненный шар, Струя огня): уровень попадания и урон, как у оружия
+      weapons: weaponModes()
     };
+  }
+
+  prepareBaseData() {
+    super.prepareBaseData();
+    // Выполнение требований (по группам и по отдельности) и невыполненные группы считает персонаж
+    this.prereqStatus = [];
+    this.unmetPrereqs = [];
   }
 }
 
@@ -192,6 +247,16 @@ const weaponMode = fields => ({
   defaults: skillDefaults()
 });
 
+/** Режимы оружия предмета: ближний и дальний бой. Есть у снаряжения и атакующих заклинаний (Огненный шар). */
+const weaponModes = () => new ArrayField(new TypedSchemaField({
+  melee: weaponMode({ reach: text(), parry: text(), block: text() }),
+  ranged: weaponMode({
+    accuracy: text(), range: text(), rateOfFire: text(), shots: text(), bulk: text(), recoil: text(),
+    // Калибр или тип боеприпаса: "5.56mm", "12G"
+    ammo: text()
+  })
+}));
+
 /** Поля транспорта (B462–B465) в порядке таблицы; текст, как в книге: "27†", "4/9*", "2DE2W". */
 export const VEHICLE_FIELDS = ["strengthHealth", "handling", "stability", "health", "move", "loadedWeight", "load",
   "sizeModifier", "occupants", "dr", "range", "locations", "stall", "draft"];
@@ -213,21 +278,6 @@ const weaponModifiers = () => new ArrayField(new TypedSchemaField({
   skill: { amount: number(0) },
   cost: { multiplier: number(1, { min: 0 }) },
   weight: { multiplier: number(1, { min: 0 }) }
-}));
-
-/**
- * Требования предмета (prereq_list в GMentor): все должны выполняться, иначе предмет подсвечивается.
- * Сейчас только умение (скафандр требует умения «Скафандр»); has: false — умения быть не должно.
- * Проверяет CharacterData#checkPrerequisites.
- */
-const prerequisites = () => new ArrayField(new TypedSchemaField({
-  skill: {
-    has: new BooleanField({ initial: true }),
-    name: text(),
-    nameCompare: choice(rules.COMPARE, "is"),
-    specialization: text(),
-    specializationCompare: choice(rules.COMPARE, "is anything")
-  }
 }));
 
 export class EquipmentData extends BaseItemData {
@@ -260,14 +310,7 @@ export class EquipmentData extends BaseItemData {
         ...Object.fromEntries(VEHICLE_FIELDS.map(key => [key, text()])),
         defaults: skillDefaults()
       }, { required: true, nullable: true, initial: null }),
-      weapons: new ArrayField(new TypedSchemaField({
-        melee: weaponMode({ reach: text(), parry: text(), block: text() }),
-        ranged: weaponMode({
-          accuracy: text(), range: text(), rateOfFire: text(), shots: text(), bulk: text(), recoil: text(),
-          // Калибр или тип боеприпаса: "5.56mm", "12G"
-          ammo: text()
-        })
-      })),
+      weapons: weaponModes(),
       features: features()
     };
   }

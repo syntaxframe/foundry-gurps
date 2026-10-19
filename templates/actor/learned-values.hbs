@@ -4,7 +4,8 @@
 </label>
 <span class="item-stat">{{stat}}</span>
 {{#if (ne item.system.level null)}}
-<a class="item-level rollable {{#if bonusHint}}boosted{{/if}}" data-action="roll" data-label="{{item.name}}"
+{{!-- Заклинание творится через окно сотворения (Shift — простой бросок), умение — бросок против уровня --}}
+<a class="item-level rollable {{#if bonusHint}}boosted{{/if}}" data-action="{{#if (eq item.type "spell")}}castSpell{{else}}roll{{/if}}" data-label="{{item.name}}"
    data-value="{{item.system.level}}" {{#if bonusHint}}data-tooltip-text="{{bonusHint}}"{{/if}}>{{item.system.level}}</a>
 {{else}}
 <span class="item-level">—</span>

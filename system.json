@@ -85,6 +85,17 @@
       }
     },
     {
+      "name": "spells",
+      "label": "Заклинания",
+      "path": "packs/spells",
+      "type": "Item",
+      "system": "gmentor",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
       "name": "equipment",
       "label": "Снаряжение",
       "path": "packs/equipment",

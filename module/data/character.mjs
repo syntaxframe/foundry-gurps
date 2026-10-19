@@ -214,9 +214,21 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
         }
       }
     }
-    // Оружие и требования снаряжения считаются от умений, поэтому после цикла выше
+    // Требования, оружие и транспорт считаются от умений и заклинаний, поэтому после цикла выше.
+    // У заклинания не выполнена группа, если не выполнено ни одно требование в ней
+    for ( const item of this.parent.itemTypes.spell ) {
+      // Лист показывает все требования, выполненные — бледно, как prereq-ok в GMentor
+      item.system.prereqStatus = item.system.prereqGroups.map(group => {
+        const anyOf = group.anyOf.map(prereq => ({ prereq, met: this.#isPrereqMet(prereq, item) }));
+        return { anyOf, met: anyOf.some(entry => entry.met) };
+      });
+      item.system.unmetPrereqs = item.system.prereqGroups
+        .filter((group, index) => !item.system.prereqStatus[index].met);
+      // Атака заклинанием: уровень попадания (Врождённая атака, ЛВ−4) и урон; модификаторов оружия у неё нет
+      for ( const mode of item.system.weapons ) this.#prepareWeaponMode(mode, []);
+    }
     for ( const item of this.parent.itemTypes.equipment ) {
-      item.system.unmetPrereqs = this.#unmetPrereqs(item);
+      item.system.unmetPrereqs = item.system.prereqs.filter(prereq => !this.#isPrereqMet(prereq, item));
       const modifiers = this.#applyEquipmentModifiers(item);
       for ( const mode of item.system.weapons ) this.#prepareWeaponMode(mode, modifiers);
       if ( item.system.vehicle ) this.#prepareVehicle(item.system.vehicle);
@@ -255,18 +267,44 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
   }
 
   /**
-   * Невыполненные требования предмета, как checkPrerequisits в GMentor: умение должно быть изучено (уровень
-   * посчитан). Название сравнивается по идентификатору, как в бонусах черт, специализация — без учёта регистра.
-   * @returns {object[]}  Требования из system.prereqs, которые не выполнены
+   * Выполнено ли требование предмета, как checkPrerequisits в GMentor. Умения и заклинания должны быть изучены
+   * (уровень посчитан), сам предмет требованием себе не служит. Названия сравниваются по идентификатору,
+   * как в бонусах черт, остальное — без учёта регистра. В отличие от GMentor, школа сравнивается с каждой частью
+   * составной («Air/Weather» — и Воздух, и Погода), а collegeCount считает разные школы, а не заклинания (M8).
    */
-  #unmetPrereqs(item) {
+  #isPrereqMet(prereq, item) {
     const lower = text => text.trim().toLowerCase();
-    return item.system.prereqs.filter(prereq => {
-      const found = this.parent.itemTypes.skill.some(skill => (skill.system.level !== null)
-        && rules.compareText(rules.toIdentifier(skill.system.identifier), rules.toIdentifier(prereq.name), prereq.nameCompare)
-        && rules.compareText(lower(skill.system.specialization), lower(prereq.specialization), prereq.specializationCompare));
-      return found !== prereq.has;
-    });
+    const nameMatches = other => rules.compareText(rules.toIdentifier(other.system.identifier),
+      rules.toIdentifier(prereq.name), prereq.nameCompare);
+    const learned = type => this.parent.itemTypes[type].filter(other => (other !== item) && (other.system.level !== null));
+    const colleges = spell => spell.system.college.split("/").map(lower);
+    let found;
+    switch ( prereq.type ) {
+      case "skill":
+        found = learned("skill").some(skill => nameMatches(skill)
+          && rules.compareText(lower(skill.system.specialization), lower(prereq.specialization), prereq.specializationCompare)
+          && (skill.system.level >= prereq.level));
+        break;
+      case "spell": {
+        const spells = learned("spell").filter(spell => nameMatches(spell)
+          && colleges(spell).some(college => rules.compareText(college, lower(prereq.college), prereq.collegeCompare)));
+        found = prereq.collegeCount
+          ? new Set(spells.flatMap(colleges)).size >= prereq.collegeCount
+          : spells.length >= prereq.quantity;
+        break;
+      }
+      case "advantage":
+        found = this.parent.itemTypes.advantage.some(advantage => (advantage !== item) && nameMatches(advantage)
+          && rules.compareText(lower(advantage.system.notes), lower(prereq.notes), prereq.notesCompare)
+          && (advantage.system.levels >= prereq.level));
+        break;
+      case "attribute": {
+        const combined = prereq.combinedWith ? this.getAttributeValue(prereq.combinedWith) : 0;
+        found = this.getAttributeValue(prereq.which) + combined >= prereq.value;
+        break;
+      }
+    }
+    return found === prereq.has;
   }
 
   /** Уровень и итоги режима оружия с модификаторами снаряжения, как charCalcWeapons в GMentor. */
@@ -277,8 +315,8 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
     mode.level = best ? best.level + modified.skill : null;
     mode.levelSource = best?.source ?? null;
     mode.damageText = rules.resolveDamage(modified.damage, this.damage);
-    // "Special", "HT-4 aff" бросить нельзя
-    mode.rollable = !!rules.parseDamage(mode.damageText, this.damage);
+    // "Special", "HT-4 aff" бросить нельзя; у составного урона — хотя бы одну часть ("thr-1 cr + Paralysis")
+    mode.rollable = rules.damageParts(mode.damageText).some(part => rules.parseDamage(part, this.damage));
     mode.weak = rules.lacksStrength(mode.minSt, st);
     if ( mode.type === "ranged" ) {
       mode.accuracyText = modified.accuracy;

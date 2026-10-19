@@ -204,7 +204,7 @@ export function toIdentifier(text) {
 }
 
 // Способы сравнения названий из библиотеки GMentor/GCS (skill_bonus, spell_bonus)
-export const COMPARE = ["is", "is anything", "starts with", "contains", "is not"];
+export const COMPARE = ["is", "is anything", "starts with", "contains", "does not contain", "is not"];
 
 /** Сравнение строки с образцом одним из способов COMPARE. Строки сравниваются как есть, нормализует вызывающий. */
 export function compareText(value, pattern, compare) {
@@ -212,6 +212,7 @@ export function compareText(value, pattern, compare) {
     case "is anything": return true;
     case "starts with": return value.startsWith(pattern);
     case "contains": return value.includes(pattern);
+    case "does not contain": return !value.includes(pattern);
     case "is not": return value !== pattern;
     default: return value === pattern;
   }
@@ -272,6 +273,37 @@ export function resolveDamage(text, { thr, sw }) {
 
 /** Число со знаком: 2 → "+2", -1 → "-1". */
 const signed = number => (number >= 0 ? `+${number}` : String(number));
+
+// Части составного урона: удар и эффект заклинания через «+» ("thr-1 cr +1d+1 burn/point", "thr-1 cr + Paralysis")
+// или эффект через « - » ("1d kb/point - Blinds"). "thr +1 cr" и "sw+1d cut" — не составной урон
+const DAMAGE_PART_SEPARATOR = /\s+\+\s*(?=\d+d|[a-z])|\s+-\s+(?=[a-z])/i;
+
+/** Составной урон по частям: "thr-1 cr +1d burn/point" → ["thr-1 cr", "1d burn/point"]. Каждая бросается отдельно. */
+export function damageParts(text) {
+  return String(text).trim().split(DAMAGE_PART_SEPARATOR).map(part => part.trim()).filter(Boolean);
+}
+
+// Урон заклинания за вложенную энергию: "1d burn/point", "1d-1 burn ex/2 points", "1d/point"
+const DAMAGE_PER_ENERGY = /^(\d+)d([+-]\d+)?\s*(.*?)\s*\/\s*(\d+)?\s*points?$/i;
+
+/** За сколько очков энергии даётся урон из записи заклинания: "1d burn/point" → 1, "…/2 points" → 2, иначе null. */
+export function energyStep(text) {
+  const match = String(text).trim().match(DAMAGE_PER_ENERGY);
+  return match ? Number(match[4] ?? 1) : null;
+}
+
+/**
+ * Урон заклинания при вложенной энергии (M): кубики и прибавка умножаются на число шагов.
+ * "1d-1 burn/point" и 3 очка → "3d-3 burn", "1d burn ex/2 points" и 4 очка → "2d burn ex".
+ */
+export function energyDamage(text, energy) {
+  const match = String(text).trim().match(DAMAGE_PER_ENERGY);
+  if ( !match ) return String(text).trim();
+  const [, dice, add = "0", type, per = "1"] = match;
+  const steps = Math.max(Math.floor(energy / Number(per)), 1);
+  const bonus = Number(add) * steps;
+  return `${Number(dice) * steps}d${bonus ? signed(bonus) : ""} ${type}`.trim();
+}
 
 // Урон в записи оружия: "2d+1", "sw+2", "thr" (без "3dx2" — множитель кубиков)
 const DAMAGE_DICE = /\b(\d{1,2})d([+-]\d{1,2})?(?!x)/;
@@ -393,4 +425,92 @@ export function weaponDefense(text, level) {
   const match = String(text).trim().match(/^([+-]?\d+)(.*)$/);
   if ( !match || (level === null) ) return null;
   return { value: Math.floor(level / 2) + 3 + Number(match[1]), note: match[2].trim() };
+}
+
+/* -------------------------------------------- */
+/*  Сотворение заклинаний                       */
+/* -------------------------------------------- */
+
+// Типы заклинаний для окна сотворения (M10–M15), как в инструменте GMentor
+export const SPELL_CAST_TYPES = ["regular", "area", "melee", "missile", "blocking", "info", "enchantment"];
+
+// Уровень маны (M5): при низкой −5 к навыку, при очень высокой любой провал — критический
+export const MANA_LEVELS = ["veryHigh", "high", "normal", "low"];
+
+// Дальность информационного заклинания (B241): до 200 м, полмили, 1, 3, 10 … 1 000 000 миль
+export const INFO_RANGE_MODIFIERS = [0, -1, -2, -3, -4, -5, -6, -7, -8, -10, -12, -14];
+
+/** Тип для окна сотворения по классу заклинания: "Regular/Blocking" → "regular", "Info" → "info", "Special" → "regular". */
+export function spellCastType(spellClass) {
+  const first = String(spellClass).trim().toLowerCase().split(/[\s/]/)[0];
+  return SPELL_CAST_TYPES.includes(first) ? first : "regular";
+}
+
+/**
+ * Итоговый навык сотворения, как toolSpellCast в GMentor: низкая мана −5, −1 за каждую ЕЖ вместо ЕУ,
+ * −1 за каждое действующее заклинание и −3 за требующее концентрации (M8), расстояние −1 за метр и −5,
+ * если цель не видна (M10–M11), дальность информационного по таблице и −1 за игнорируемый объект (M13).
+ * Против сопротивления навык не выше 16, если сопротивление не выше (правило 16, B349).
+ */
+export function spellCastTarget({ level, modifier = 0, mana = "normal", hpInstead = 0, activeSpells = 0,
+  concentrating = 0, type = "regular", range = 0, unseen = false, infoRange = 0, ignored = 0, resisted = false,
+  resistance = 10 }) {
+  let target = level + modifier - hpInstead - activeSpells - (3 * concentrating);
+  if ( mana === "low" ) target -= 5;
+  if ( (type === "regular") || (type === "area") ) target -= range + (unseen ? 5 : 0);
+  if ( type === "info" ) target += infoRange - ignored;
+  if ( resisted ) target = Math.min(target, Math.max(16, resistance));
+  return target;
+}
+
+/**
+ * Ритуал, скидка на стоимость и множитель времени по уровню заклинания (M9), как подсказка GMentor:
+ * до 10 — громкие слова и время ×2; 10+ — тихие слова и жест; 15+ — слово или жест, −1 к стоимости;
+ * 20+ — без ритуала, −2 и время ÷2; дальше каждые 5 уровней ещё −1 и ÷2. У блокирующих стоимость и время
+ * не меняются.
+ * @returns {{ritual: "loud"|"quiet"|"word"|"none"|"absent", costReduction: number, timeFactor: number}}
+ */
+export function castingEffects(level, { mana = "normal", type = "regular" } = {}) {
+  const skill = (mana === "low") ? level - 5 : level;
+  let ritual = "loud";
+  if ( skill >= 25 ) ritual = "absent";
+  else if ( skill >= 20 ) ritual = "none";
+  else if ( skill >= 15 ) ritual = "word";
+  else if ( skill >= 10 ) ritual = "quiet";
+  if ( type === "blocking" ) return { ritual, costReduction: 0, timeFactor: 1 };
+  const costReduction = (skill >= 15) ? Math.floor(skill / 5) - 2 : 0;
+  let timeFactor = 1;
+  if ( skill < 10 ) timeFactor = 2;
+  else if ( skill >= 20 ) timeFactor = 1 / (2 ** (Math.floor(skill / 5) - 3));
+  return { ritual, costReduction, timeFactor };
+}
+
+/** Базовая стоимость из записи заклинания, если это просто число ("3"); "Varies", "1-3", "1#" → null. */
+export function baseSpellCost(castingCost) {
+  const text = String(castingCost).trim();
+  return /^\d+$/.test(text) ? Number(text) : null;
+}
+
+/**
+ * Энергия на сотворение: обычное заклинание — × (МР + 1) цели при МР больше 0, областное — × радиус
+ * больше 1 (M10–M11), затем скидка за уровень, не меньше 0.
+ */
+export function spellEnergy(baseCost, { type = "regular", sm = 0, radius = 1, costReduction = 0 } = {}) {
+  let cost = baseCost;
+  if ( (type === "regular") && (sm > 0) ) cost *= sm + 1;
+  if ( (type === "area") && (radius > 1) ) cost *= radius;
+  return Math.max(cost - costReduction, 0);
+}
+
+/**
+ * Сколько энергии тратится по исходу броска: при критическом успехе — ничего (как в GMentor), при провале — 1,
+ * при критическом провале — вся (B236). Часть платится ЕЖ вместо ЕУ (hpInstead), но не больше потраченного.
+ * @returns {{fp: number, hp: number}}
+ */
+export function spentEnergy(cost, outcome, hpInstead = 0) {
+  let spent = cost;
+  if ( outcome === "critSuccess" ) spent = 0;
+  else if ( outcome === "failure" ) spent = Math.min(cost, 1);
+  const hp = Math.min(hpInstead, spent);
+  return { fp: spent - hp, hp };
 }

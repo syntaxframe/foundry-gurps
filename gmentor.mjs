@@ -1,3 +1,4 @@
+import { onRenderChatMessage } from "./module/chat.mjs";
 import { registerConditions } from "./module/conditions.mjs";
 import CharacterData from "./module/data/character.mjs";
 import { AdvantageData, EquipmentData, SkillData, SpellData } from "./module/data/items.mjs";
@@ -18,7 +19,9 @@ Hooks.once("init", () => {
 
   // Библиотеки, из которых кнопка «+» на листе предлагает предметы: тип предмета → id компендиума
   CONFIG.GMENTOR = {
-    libraries: { advantage: "gmentor.advantages", skill: "gmentor.skills", equipment: "gmentor.equipment" }
+    libraries: {
+      advantage: "gmentor.advantages", skill: "gmentor.skills", spell: "gmentor.spells", equipment: "gmentor.equipment"
+    }
   };
 
   CONFIG.Actor.trackableAttributes.character = { bar: ["hp", "fp"], value: [] };
@@ -39,3 +42,6 @@ Hooks.once("init", () => {
     "systems/gmentor/templates/item/setup-placeholders.hbs"
   ]);
 });
+
+// Кнопка «Списать энергию» в сообщении о сотворении заклинания
+Hooks.on("renderChatMessageHTML", onRenderChatMessage);

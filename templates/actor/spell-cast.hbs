@@ -1,0 +1,59 @@
+{{!-- Окно сотворения как инструмент GMentor (toolSpellCast): фразы с синими значениями в строке, подсказка
+     о ритуале, стоимости и времени (M9) и кнопка броска с итогом --}}
+<div class="spell-cast-content">
+  <header class="spell-cast-header">
+    <h2><i class="fa-solid fa-wand-magic-sparkles" inert></i> {{localize "GMENTOR.SpellCast.title"}}</h2>
+    <span class="book-ref">M7</span>
+  </header>
+
+  <p class="line">{{localize "GMENTOR.SpellCast.level"}} <input class="inline-value big" type="number" name="level" value="{{level}}"></p>
+  <p class="line">
+    <label><input type="checkbox" name="resisted"> {{localize "GMENTOR.SpellCast.resisted"}}</label><span class="resistance">{{localize "GMENTOR.SpellCast.resistance"}}
+      <input class="inline-value" type="number" name="resistance" value="10"> {{localize "GMENTOR.SpellCast.resistanceRef"}}</span>
+  </p>
+  <p class="line">{{localize "GMENTOR.SpellCast.manaLabel"}}
+    <select class="inline-value" name="mana">{{selectOptions manaChoices selected=mana localize=true}}</select></p>
+  <p class="line">{{localize "GMENTOR.SpellCast.hpBefore"}}
+    <input class="inline-value" type="number" name="hpInstead" value="0" min="0"> {{localize "GMENTOR.SpellCast.hpAfter"}}</p>
+  <p class="line">{{localize "GMENTOR.SpellCast.active"}}
+    <input class="inline-value" type="number" name="activeSpells" value="0" min="0"> {{localize "GMENTOR.SpellCast.activeOn"}}
+    <input class="inline-value" type="number" name="concentrating" value="0" min="0"> {{localize "GMENTOR.SpellCast.activeConcentration"}}</p>
+  <p class="line type-line">{{localize "GMENTOR.SpellCast.typeLabel"}}
+    <select class="inline-value" name="type">{{selectOptions typeChoices selected=type localize=true}}</select></p>
+
+  <div data-types="regular">
+    <p class="line">{{localize "GMENTOR.SpellCast.regularRange"}}
+      <input class="inline-value" type="number" name="range" value="0" min="0"> {{localize "GMENTOR.SpellCast.meters"}}</p>
+    <p class="line"><label><input type="checkbox" name="unseen"> {{localize "GMENTOR.SpellCast.regularUnseen"}}</label></p>
+    <p class="line">{{localize "GMENTOR.SpellCast.sm"}} <input class="inline-value" type="number" name="sm" value="0"> SM</p>
+  </div>
+  <div data-types="area">
+    <p class="line">{{localize "GMENTOR.SpellCast.areaRange"}}
+      <input class="inline-value" type="number" name="areaRange" value="0" min="0"> {{localize "GMENTOR.SpellCast.meters"}}</p>
+    <p class="line"><label><input type="checkbox" name="areaUnseen"> {{localize "GMENTOR.SpellCast.areaUnseen"}}</label></p>
+    <p class="line">{{localize "GMENTOR.SpellCast.radius"}}
+      <input class="inline-value" type="number" name="radius" value="1" min="1"> {{localize "GMENTOR.SpellCast.meters"}}</p>
+  </div>
+  <div data-types="info">
+    <p class="line">{{localize "GMENTOR.SpellCast.infoRangeLabel"}}
+      <select class="inline-value" name="infoRange">{{selectOptions infoRangeChoices localize=true}}</select></p>
+    <p class="line">{{localize "GMENTOR.SpellCast.ignored"}} <input class="inline-value" type="number" name="ignored" value="0" min="0"></p>
+    <p class="note">{{localize "GMENTOR.SpellCast.ignoredNote"}}</p>
+  </div>
+
+  <p class="line">{{localize "GMENTOR.SpellCast.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></p>
+  {{!-- Базовой стоимости в GMentor нет: по ней считается энергия к списанию --}}
+  <p class="line">{{localize "GMENTOR.SpellCast.baseCost"}} <input class="inline-value" type="number" name="baseCost" value="{{baseCost}}" min="0">
+    {{localize "GMENTOR.SpellCast.fp"}}{{#if spell.system.castingCost}} <span class="note">({{localize "GMENTOR.SpellCast.byBook"}}: {{spell.system.castingCost}})</span>{{/if}}</p>
+
+  <div class="note-block">
+    <p><b>{{localize "GMENTOR.SpellCast.ritualLabel"}}</b> <span data-preview="ritual"></span></p>
+    <p><b>{{localize "GMENTOR.SpellCast.costLabel"}}</b> <span data-preview="cost"></span></p>
+    <p><b>{{localize "GMENTOR.SpellCast.timeLabel"}}</b> <span data-preview="time"></span></p>
+  </div>
+
+  <div class="effective-roll">
+    <span>{{localize "GMENTOR.SpellCast.effective"}}</span>
+    <button type="submit" class="skill-roll"><i class="fa-solid fa-dice" inert></i> <span data-preview="target"></span></button>
+  </div>
+</div>

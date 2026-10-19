@@ -16,8 +16,10 @@
     U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Палитра GMentor. Лист всегда светлый (классы themed theme-light в DEFAULT_OPTIONS) */
-.gmentor {
+/* Палитра GMentor. Лист всегда светлый (классы themed theme-light в DEFAULT_OPTIONS). Сообщения в чате
+   (.gmentor-roll) лежат вне листа, поэтому палитра объявлена и для них */
+.gmentor,
+.gmentor-roll {
   --gm-font: "GMentor Roboto Condensed", "Roboto Condensed", sans-serif;
   --gm-text: #000;
   --gm-bg: #fff;
@@ -28,6 +30,11 @@
   --gm-cost: #bbb;
   --gm-accent: #4e98e0;
   --gm-warn: #e00;
+  --gm-soft: #666;
+  /* Подсказка инструмента (note-block) и строка с невыполненными требованиями (prereq-fail) */
+  --gm-note-bg: #f1f1f1;
+  --gm-fail-bg: rgba(255, 0, 0, 0.067);
+  --gm-veil: rgba(255, 255, 255, 0.5);
 }
 
 /* Чисто белый фон: светлая тема Foundry рисует на окне текстуру, убираем её */
@@ -747,6 +754,89 @@
   color: var(--gm-accent);
 }
 
+/* Строка заклинания как в списке GMentor: класс, «стоим:», «время:» мелко рядом с названием */
+.gmentor .spell-summary {
+  display: flex;
+  gap: 0 0.4rem;
+  font-size: 0.8em;
+}
+
+.gmentor .spell-row .label {
+  color: var(--gm-dim);
+}
+
+/* Атака заклинанием: «Dmg 1d burn/point Acc 1 Range 25/50», справа откуда уровень и сам уровень */
+.gmentor .spell-weapon {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 2px 0;
+  color: var(--gm-soft);
+  font-size: 0.9em;
+}
+
+.gmentor .spell-weapon .weapon-stats {
+  display: flex;
+  flex: 1;
+  gap: 0 0.5rem;
+}
+
+.gmentor .spell-weapon .label {
+  margin-right: 0.2em;
+  font-size: 0.8em;
+}
+
+.gmentor .spell-weapon .weapon-source {
+  color: var(--gm-faint);
+  font-size: 0.8em;
+}
+
+.gmentor .spell-weapon .weapon-level {
+  min-width: 1.5rem;
+  font-size: 1.1em;
+  text-align: right;
+}
+
+/* Невыполненные требования: строка розовая, требования рамками, выполненные бледно (prereq-fail в GMentor) */
+.gmentor .spell-row.prereq-fail {
+  background: var(--gm-fail-bg);
+}
+
+.gmentor .spell-prereqs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px;
+  width: 100%;
+  margin-left: 10px;
+  color: var(--gm-warn);
+  font-size: 0.9em;
+}
+
+.gmentor .spell-prereqs > .label {
+  width: 100%;
+}
+
+.gmentor .spell-prereqs .prereq,
+.gmentor .spell-prereqs .prereq-group {
+  padding: 2px;
+  border: 1px solid var(--gm-line);
+  border-radius: 3px;
+  background: var(--gm-veil);
+}
+
+.gmentor .spell-prereqs .prereq-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.gmentor .spell-prereqs .met {
+  opacity: 0.5;
+}
+
 .gmentor .item-modifier::before {
   content: "%";
   margin-right: 3px;
@@ -1216,6 +1306,127 @@
 .gmentor-roll .failure,
 .gmentor-roll .critFailure {
   color: #a82020;
+}
+
+/* Сотворение заклинания: эффект критического исхода и кнопка списания энергии */
+.gmentor-roll .critical {
+  font-style: italic;
+}
+
+.gmentor-roll.spell-cast-roll h3 {
+  font-size: 1.1em;
+}
+
+.gmentor-roll .spend-energy {
+  margin-top: 0.25rem;
+}
+
+/* Окно сотворения как инструмент GMentor: фразы с синими значениями без рамок, серая подсказка, кнопка броска */
+.gmentor.spell-cast .spell-cast-header {
+  position: relative;
+}
+
+.gmentor.spell-cast .spell-cast-header h2 {
+  margin: 0.75rem 0;
+  border: none;
+  color: var(--gm-text);
+  font-family: var(--gm-font);
+  font-size: 1.5rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.gmentor.spell-cast .spell-cast-header .book-ref {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--gm-accent);
+}
+
+.gmentor.spell-cast .line {
+  margin: 0.6rem 0;
+  font-size: 1rem;
+}
+
+.gmentor.spell-cast .type-line {
+  font-size: 1.4rem;
+}
+
+/* Поле по ширине значения, как editable-значения GMentor */
+.gmentor.spell-cast .inline-value {
+  field-sizing: content;
+  min-width: 1ch;
+  width: auto;
+  height: auto;
+  padding: 0 0.15em;
+  border: none;
+  background: none;
+  color: var(--gm-accent);
+  font: inherit;
+  text-align: center;
+  box-shadow: none;
+}
+
+.gmentor.spell-cast select.inline-value {
+  width: auto;
+  appearance: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gmentor.spell-cast .inline-value.big {
+  font-size: 1.8em;
+}
+
+.gmentor.spell-cast .inline-value::-webkit-inner-spin-button {
+  display: none;
+}
+
+.gmentor.spell-cast .note {
+  margin: 0;
+  color: var(--gm-dim);
+  font-size: 0.8rem;
+}
+
+.gmentor-roll .note-block,
+.gmentor.spell-cast .note-block {
+  padding: 0.6rem;
+  background: var(--gm-note-bg);
+  color: var(--gm-dim);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* Ритуал бывает в две строки («…жест (парой пальцев)» / «Можно передвигаться…») */
+.gmentor-roll .note-block p,
+.gmentor.spell-cast .note-block p {
+  margin: 0.5rem 0;
+  white-space: pre-line;
+}
+
+.gmentor.spell-cast .effective-roll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 1rem 0 0.5rem;
+  color: var(--gm-soft);
+}
+
+.gmentor.spell-cast .skill-roll {
+  width: auto;
+  height: auto;
+  padding: 0.6rem 1rem;
+  border: 2px solid var(--gm-bg);
+  border-radius: 4px;
+  background: var(--gm-accent);
+  color: var(--gm-bg);
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.gmentor.spell-cast .skill-roll i {
+  font-size: 1.5rem;
 }
 
 /* Вопросы при добавлении: модификаторы строками, между группами разделитель, цена и ссылка справа */

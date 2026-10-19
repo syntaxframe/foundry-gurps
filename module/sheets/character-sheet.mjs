@@ -1,7 +1,9 @@
 import { CONDITIONS, CONDITION_GROUPS, conditionDescription } from "../conditions.mjs";
 import { PROFILE_FIELDS, SENSES } from "../data/character.mjs";
 import { VEHICLE_FIELDS } from "../data/items.mjs";
+import { toIdentifier } from "../rules.mjs";
 import ItemPicker from "./item-picker.mjs";
+import SpellCastDialog from "./spell-cast.mjs";
 import { setupItemData } from "./item-setup.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -54,6 +56,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     form: { submitOnChange: true },
     actions: {
       roll: CharacterSheet.#onRoll,
+      castSpell: CharacterSheet.#onCastSpell,
       stepValue: CharacterSheet.#onStepValue,
       rollDamage: CharacterSheet.#onRollDamage,
       addItem: CharacterSheet.#onAddItem,
@@ -108,6 +111,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const actor = this.actor;
     const system = actor.system;
     const equipment = actor.itemTypes.equipment.toSorted((a, b) => a.sort - b.sort);
+    await this.#loadLibraryNames();
     Object.assign(context, {
       actor,
       system,
@@ -166,6 +170,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       stat: this.#learnedStat(item),
       effects: (type === "advantage") ? this.#traitEffects(item) : "",
       bonusHint: this.#bonusHint(item),
+      ...((type === "spell") ? this.#spellRow(item) : {}),
       description: showDescriptions && item.system.description
         ? await foundry.applications.ux.TextEditor.implementation.enrichHTML(item.system.description, {
           secrets: this.actor.isOwner, relativeTo: item
@@ -190,7 +195,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
         const hasContents = item.system.isContainer || (childrenOf(item.id).length > 0);
         const collapsed = this.#collapsedContainers.has(item.id);
         const effects = [this.#traitEffects(item), this.#modifierEffects(item)].filter(Boolean).join(", ");
-        const unmetPrereqs = item.system.unmetPrereqs.map(prereq => this.#prereqText(prereq)).join("; ");
+        const unmetPrereqs = this.#unmetPrereqsText(item);
         rows.push({ item, depth, hasContents, collapsed, effects, unmetPrereqs });
         if ( hasContents && !collapsed ) addRows(item.id, depth + 1);
       }
@@ -228,13 +233,14 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   }
 
   /**
-   * Режимы надетого оружия для таблиц ближнего и дальнего боя, как оружие в руках в GMentor.
+   * Режимы надетого оружия для таблиц ближнего и дальнего боя, как оружие в руках в GMentor, а после них —
+   * атакующие заклинания (Огненный шар, Струя огня): они всегда при персонаже.
    * @returns {{melee: object[], ranged: object[]}}
    */
   #prepareWeapons(equipment) {
     const weapons = { melee: [], ranged: [] };
-    for ( const item of equipment ) {
-      if ( item.system.state !== "equipped" ) continue;
+    const spells = this.actor.itemTypes.spell.toSorted((a, b) => a.sort - b.sort);
+    for ( const item of [...equipment.filter(item => item.system.state === "equipped"), ...spells] ) {
       for ( const mode of item.system.weapons ) {
         weapons[mode.type].push({ item, mode, levelHint: this.#weaponLevelHint(mode) });
       }
@@ -284,12 +290,96 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     return parts.join(", ");
   }
 
-  /** Требование словами: «Нужно умение battlesuit», «Не должно быть умения …». Название — идентификатор умения. */
-  #prereqText({ has, name, nameCompare, specialization, specializationCompare }) {
+  /**
+   * Русские названия предметов библиотек по идентификатору («spell.purify-air» → «Очистка воздуха»): требования
+   * хранят английские названия. Индексы компендиумов грузятся, только когда есть невыполненные требования.
+   */
+  async #loadLibraryNames() {
+    const items = [...this.actor.itemTypes.spell, ...this.actor.itemTypes.equipment];
+    if ( this.#libraryNames.size || !items.some(item => item.system.unmetPrereqs.length) ) return;
+    for ( const [type, packId] of Object.entries(CONFIG.GMENTOR.libraries) ) {
+      const index = await game.packs.get(packId)?.getIndex({ fields: ["system.identifier"] });
+      for ( const entry of index ?? [] ) {
+        const key = `${type}.${entry.system?.identifier}`;
+        if ( entry.system?.identifier && !this.#libraryNames.has(key) ) this.#libraryNames.set(key, entry.name);
+      }
+    }
+  }
+
+  /**
+   * Подсказка к значку невыполненных требований: группы через «;», варианты внутри группы через «или».
+   * У заклинания невыполненные — группы требований, у снаряжения — отдельные требования.
+   */
+  #unmetPrereqsText(item) {
+    const groups = item.system.unmetPrereqs.map(unmet => unmet.anyOf ?? [unmet]);
+    if ( !groups.length ) return "";
+    const or = ` ${game.i18n.localize("GMENTOR.Prereq.or")} `;
+    const prereqs = groups.map(group => group.map(prereq => this.#prereqText(prereq)).join(or)).join("; ");
+    return game.i18n.format("GMENTOR.Prereq.unmet", { prereqs });
+  }
+
+  /**
+   * Одно требование словами GMentor (prereq_list на листе): «Закл. Создание огня», «Преим. Магические способности
+   * пометка не содержит: one college не менее: 1 ур.», «Атр. ИН не менее: 11». Названия — русские из библиотек.
+   */
+  #prereqText(prereq) {
+    const word = key => game.i18n.localize(`GMENTOR.Prereq.${key}`);
     const compare = key => game.i18n.localize(`GMENTOR.Compare.${key.replaceAll(" ", "-")}`);
-    let skill = (nameCompare === "is") ? name : `${compare(nameCompare)} ${name}`;
-    if ( specializationCompare !== "is anything" ) skill += ` (${compare(specializationCompare)} ${specialization})`;
-    return game.i18n.format(has ? "GMENTOR.PrereqSkill" : "GMENTOR.PrereqNoSkill", { skill });
+    const condition = (value, key) => `${compare(key)}: ${value}`;
+    const named = (type, name, nameCompare) => ((nameCompare === "is")
+      ? (this.#libraryNames.get(`${type}.${toIdentifier(name)}`) ?? name)
+      : condition(name, nameCompare));
+    const atLeast = (value, unit) => `${word("atLeast")} ${value}${unit ? ` ${word(unit)}` : ""}`;
+    const abbr = attribute => game.i18n.localize(`GMENTOR.AttributeAbbr.${attribute}`);
+    const parts = [];
+    switch ( prereq.type ) {
+      case "skill":
+        parts.push(named("skill", prereq.name, prereq.nameCompare));
+        if ( prereq.specializationCompare !== "is anything" ) {
+          parts.push(`(${condition(prereq.specialization, prereq.specializationCompare)})`);
+        }
+        if ( prereq.level ) parts.push(atLeast(prereq.level, "level"));
+        break;
+      case "spell":
+        if ( prereq.nameCompare !== "is anything" ) parts.push(named("spell", prereq.name, prereq.nameCompare));
+        if ( prereq.collegeCompare !== "is anything" ) {
+          parts.push(`${word("college")} ${condition(this.#collegeLabel(prereq.college), prereq.collegeCompare)}`);
+        }
+        if ( !parts.length ) parts.push(word("anySpell"));
+        if ( prereq.collegeCount ) parts.push(atLeast(prereq.collegeCount, "colleges"));
+        else if ( prereq.quantity > 1 ) parts.push(atLeast(prereq.quantity, "pieces"));
+        break;
+      case "advantage":
+        parts.push(named("advantage", prereq.name, prereq.nameCompare));
+        if ( prereq.notesCompare !== "is anything" ) {
+          parts.push(`${word("notes")} ${condition(prereq.notes, prereq.notesCompare)}`);
+        }
+        if ( prereq.level ) parts.push(atLeast(prereq.level, "level"));
+        break;
+      case "attribute":
+        parts.push(prereq.combinedWith ? `${abbr(prereq.which)} + ${abbr(prereq.combinedWith)}` : abbr(prereq.which));
+        parts.push(atLeast(prereq.value));
+        break;
+    }
+    return `${word(prereq.has ? prereq.type : `${prereq.type}Not`)} ${parts.join(" ")}`;
+  }
+
+  /**
+   * Атаки и требования для строки заклинания, как в списке GMentor: режимы оружия строками под названием,
+   * требования — блоком, только если какое-то не выполнено (prereq-fail).
+   */
+  #spellRow(item) {
+    // У областных заклинаний умолчаний нет: GMentor тогда ничего не пишет вместо «нет подходящего умения»
+    const weapons = item.system.weapons.map(mode => ({
+      mode, levelHint: mode.defaults.length ? this.#weaponLevelHint(mode) : ""
+    }));
+    if ( !item.system.unmetPrereqs.length ) return { weapons, prereqs: null };
+    const prereqs = item.system.prereqStatus.map(group => ({
+      met: group.met,
+      single: group.anyOf.length === 1,
+      entries: group.anyOf.map(({ prereq, met }) => ({ text: this.#prereqText(prereq), met }))
+    }));
+    return { weapons, prereqs };
   }
 
   /** Что модификатор оружия меняет, одной строкой: «Урон +1, Цена × 4». */
@@ -335,6 +425,17 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const bonuses = item.system.traitBonuses ?? [];
     return bonuses.map(({ source, value }) =>
       game.i18n.format("GMENTOR.BonusFrom", { value: value.signedString(), source })).join("; ");
+  }
+
+  /**
+   * Школа заклинания по-русски. Хранится по-английски (с ней сравнивают бонусы черт) и бывает составной:
+   * «Air/Weather» → «Воздух/Погода». Незнакомая часть остаётся как есть.
+   */
+  #collegeLabel(college) {
+    return college.split("/").map(part => {
+      const key = `GMENTOR.College.${toIdentifier(part)}`;
+      return game.i18n.has(key) ? game.i18n.localize(key) : part.trim();
+    }).join("/");
   }
 
   /** Атрибут и отставание уровня от него, как gc-stat в GMentor: «ЛВ», «ИН+1», «ЗД−2». */
@@ -457,6 +558,13 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   static #onRoll(event, target) {
     const { label, value } = target.dataset;
     return this.actor.rollSuccess(label, Number(value), { askModifier: event.shiftKey });
+  }
+
+  /** Уровень заклинания: окно сотворения, как в GMentor; с Shift — простой бросок без окна. */
+  static #onCastSpell(event, target) {
+    if ( event.shiftKey ) return this.actor.rollSuccess(target.dataset.label, Number(target.dataset.value));
+    const spell = this.actor.items.get(target.closest("[data-item-id]").dataset.itemId);
+    return new SpellCastDialog({ spell }).render({ force: true });
   }
 
   /** Стрелка панели: изменить итог на шаг поля, с Ctrl — на 10 шагов. */
@@ -707,4 +815,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** Свёрнутые контейнеры снаряжения (id предметов). */
   #collapsedContainers = new Set();
+
+  /** Русские названия предметов библиотек для подсказок требований (#loadLibraryNames). */
+  #libraryNames = new Map();
 }
