@@ -3,6 +3,7 @@ import { PROFILE_FIELDS, SENSES } from "../data/character.mjs";
 import { VEHICLE_FIELDS } from "../data/items.mjs";
 import { toIdentifier } from "../rules.mjs";
 import ItemPicker from "./item-picker.mjs";
+import RangedAttackDialog from "./ranged-attack.mjs";
 import SpellCastDialog from "./spell-cast.mjs";
 import { setupItemData } from "./item-setup.mjs";
 
@@ -57,6 +58,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     actions: {
       roll: CharacterSheet.#onRoll,
       castSpell: CharacterSheet.#onCastSpell,
+      rangedAttack: CharacterSheet.#onRangedAttack,
       stepValue: CharacterSheet.#onStepValue,
       rollDamage: CharacterSheet.#onRollDamage,
       addItem: CharacterSheet.#onAddItem,
@@ -241,9 +243,9 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const weapons = { melee: [], ranged: [] };
     const spells = this.actor.itemTypes.spell.toSorted((a, b) => a.sort - b.sort);
     for ( const item of [...equipment.filter(item => item.system.state === "equipped"), ...spells] ) {
-      for ( const mode of item.system.weapons ) {
-        weapons[mode.type].push({ item, mode, levelHint: this.#weaponLevelHint(mode) });
-      }
+      item.system.weapons.forEach((mode, index) => {
+        weapons[mode.type].push({ item, mode, index, levelHint: this.#weaponLevelHint(mode) });
+      });
     }
     return { meleeWeapons: weapons.melee, rangedWeapons: weapons.ranged };
   }
@@ -370,8 +372,8 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
    */
   #spellRow(item) {
     // У областных заклинаний умолчаний нет: GMentor тогда ничего не пишет вместо «нет подходящего умения»
-    const weapons = item.system.weapons.map(mode => ({
-      mode, levelHint: mode.defaults.length ? this.#weaponLevelHint(mode) : ""
+    const weapons = item.system.weapons.map((mode, index) => ({
+      mode, index, levelHint: mode.defaults.length ? this.#weaponLevelHint(mode) : ""
     }));
     if ( !item.system.unmetPrereqs.length ) return { weapons, prereqs: null };
     const prereqs = item.system.prereqStatus.map(group => ({
@@ -565,6 +567,13 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     if ( event.shiftKey ) return this.actor.rollSuccess(target.dataset.label, Number(target.dataset.value));
     const spell = this.actor.items.get(target.closest("[data-item-id]").dataset.itemId);
     return new SpellCastDialog({ spell }).render({ force: true });
+  }
+
+  /** Уровень дистанционного режима: окно атаки, как в GMentor; с Shift — простой бросок без окна. */
+  static #onRangedAttack(event, target) {
+    if ( event.shiftKey ) return this.actor.rollSuccess(target.dataset.label, Number(target.dataset.value));
+    const item = this.#getItem(target);
+    return new RangedAttackDialog({ item, mode: Number(target.dataset.mode) }).render({ force: true });
   }
 
   /** Стрелка панели: изменить итог на шаг поля, с Ctrl — на 10 шагов. */

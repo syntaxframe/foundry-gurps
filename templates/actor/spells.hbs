@@ -29,7 +29,8 @@
           </span>
           <span class="weapon-source">{{levelHint}}</span>
           {{#if (ne mode.level null)}}
-          <a class="weapon-level rollable" data-action="roll" data-label="{{../item.name}}" data-value="{{mode.level}}">{{mode.level}}</a>
+          <a class="weapon-level rollable" data-action="{{#if (eq mode.type "ranged")}}rangedAttack{{else}}roll{{/if}}"
+            data-label="{{../item.name}}" data-value="{{mode.level}}" data-mode="{{index}}">{{mode.level}}</a>
           {{else}}<span class="weapon-level">—</span>{{/if}}
         </div>
         {{/each}}

@@ -30,6 +30,10 @@
   --gm-cost: #bbb;
   --gm-accent: #4e98e0;
   --gm-warn: #e00;
+  /* Пометка в окне атаки: дальше 1/2D, урон вдвое меньше */
+  --gm-info: #d90;
+  /* Подчёркивание крупных значений в окнах инструментов */
+  --gm-underline: #d0e4f7;
   --gm-soft: #666;
   /* Подсказка инструмента (note-block) и строка с невыполненными требованиями (prereq-fail) */
   --gm-note-bg: #f1f1f1;
@@ -1313,20 +1317,36 @@
   font-style: italic;
 }
 
-.gmentor-roll.spell-cast-roll h3 {
+.gmentor-roll.spell-cast-roll h3,
+.gmentor-roll.ranged-attack-roll h3 {
   font-size: 1.1em;
+}
+
+/* Дистанционная атака: нехватка патронов, пометки о дистанции и урон снарядов списком */
+.gmentor-roll .warning {
+  color: var(--gm-warn);
+}
+
+.gmentor-roll .note {
+  color: var(--gm-soft);
+  font-size: 0.9em;
+}
+
+.gmentor-roll .hits {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
 }
 
 .gmentor-roll .spend-energy {
   margin-top: 0.25rem;
 }
 
-/* Окно сотворения как инструмент GMentor: фразы с синими значениями без рамок, серая подсказка, кнопка броска */
-.gmentor.spell-cast .spell-cast-header {
+/* Окна инструментов GMentor (сотворение, атака): фразы с синими значениями без рамок, серая подсказка, кнопка броска */
+.gmentor.tool-window .tool-header {
   position: relative;
 }
 
-.gmentor.spell-cast .spell-cast-header h2 {
+.gmentor.tool-window .tool-header h2 {
   margin: 0.75rem 0;
   border: none;
   color: var(--gm-text);
@@ -1336,24 +1356,24 @@
   text-align: center;
 }
 
-.gmentor.spell-cast .spell-cast-header .book-ref {
+.gmentor.tool-window .tool-header .book-ref {
   position: absolute;
   top: 0;
   right: 0;
   color: var(--gm-accent);
 }
 
-.gmentor.spell-cast .line {
+.gmentor.tool-window .line {
   margin: 0.6rem 0;
   font-size: 1rem;
 }
 
-.gmentor.spell-cast .type-line {
+.gmentor.tool-window .type-line {
   font-size: 1.4rem;
 }
 
 /* Поле по ширине значения, как editable-значения GMentor */
-.gmentor.spell-cast .inline-value {
+.gmentor.tool-window .inline-value {
   field-sizing: content;
   min-width: 1ch;
   width: auto;
@@ -1367,29 +1387,29 @@
   box-shadow: none;
 }
 
-.gmentor.spell-cast select.inline-value {
+.gmentor.tool-window select.inline-value {
   width: auto;
   appearance: none;
   text-align: left;
   cursor: pointer;
 }
 
-.gmentor.spell-cast .inline-value.big {
+.gmentor.tool-window .inline-value.big {
   font-size: 1.8em;
 }
 
-.gmentor.spell-cast .inline-value::-webkit-inner-spin-button {
+.gmentor.tool-window .inline-value::-webkit-inner-spin-button {
   display: none;
 }
 
-.gmentor.spell-cast .note {
+.gmentor.tool-window .note {
   margin: 0;
   color: var(--gm-dim);
   font-size: 0.8rem;
 }
 
 .gmentor-roll .note-block,
-.gmentor.spell-cast .note-block {
+.gmentor.tool-window .note-block {
   padding: 0.6rem;
   background: var(--gm-note-bg);
   color: var(--gm-dim);
@@ -1399,12 +1419,12 @@
 
 /* Ритуал бывает в две строки («…жест (парой пальцев)» / «Можно передвигаться…») */
 .gmentor-roll .note-block p,
-.gmentor.spell-cast .note-block p {
+.gmentor.tool-window .note-block p {
   margin: 0.5rem 0;
   white-space: pre-line;
 }
 
-.gmentor.spell-cast .effective-roll {
+.gmentor.tool-window .effective-roll {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1413,7 +1433,7 @@
   color: var(--gm-soft);
 }
 
-.gmentor.spell-cast .skill-roll {
+.gmentor.tool-window .skill-roll {
   width: auto;
   height: auto;
   padding: 0.6rem 1rem;
@@ -1425,8 +1445,105 @@
   line-height: 1;
 }
 
-.gmentor.spell-cast .skill-roll i {
+.gmentor.tool-window .skill-roll i {
   font-size: 1.5rem;
+}
+
+/* Окно атаки длиннее экрана, когда раскрыты модификаторы: содержимое прокручивается, как message в GMentor */
+.gmentor.tool-window .window-content {
+  overflow-y: auto;
+}
+
+/* Окно дистанционной атаки: данные оружия строкой, отступы для оптики и упора, раскрывающиеся модификаторы */
+.gmentor.ranged-attack .inline-value.big {
+  text-decoration: underline;
+  text-decoration-color: var(--gm-underline);
+}
+
+.gmentor.ranged-attack select.inline-value.big option {
+  font-size: 80%;
+}
+
+.gmentor.ranged-attack .location-hint {
+  margin-left: 70px;
+}
+
+/* Длинная подпись флажка переносится под текст, а не под флажок */
+.gmentor.ranged-attack .line > label {
+  display: inline-block;
+  padding-left: 20px;
+}
+
+.gmentor.ranged-attack .line > label > input[type=checkbox] {
+  margin: 0 5px 0 -20px;
+}
+
+.gmentor.ranged-attack .weapon-line {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.gmentor.ranged-attack .weapon-line .label {
+  color: var(--gm-soft);
+}
+
+.gmentor.ranged-attack .value {
+  color: var(--gm-accent);
+}
+
+.gmentor.ranged-attack .split {
+  display: flex;
+  justify-content: space-between;
+}
+
+.gmentor.ranged-attack .indent {
+  margin-left: 1.25rem;
+}
+
+.gmentor.ranged-attack .gap {
+  margin-top: 1.5rem;
+}
+
+.gmentor.ranged-attack .note.warning,
+.gmentor.ranged-attack .inline-value.warning {
+  color: var(--gm-warn);
+}
+
+.gmentor.ranged-attack .inline-value.info {
+  color: var(--gm-info);
+}
+
+.gmentor.ranged-attack details {
+  margin: 1rem 0 0;
+}
+
+.gmentor.ranged-attack details details {
+  margin-left: 0;
+}
+
+.gmentor.ranged-attack summary {
+  color: var(--gm-accent);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.gmentor.ranged-attack details details summary {
+  font-size: 1rem;
+}
+
+.gmentor.ranged-attack summary .book-ref {
+  float: right;
+  font-size: 1rem;
+}
+
+.gmentor.ranged-attack details > .line,
+.gmentor.ranged-attack details > details {
+  margin-left: 1.25rem;
+}
+
+.gmentor.ranged-attack .damage-preview {
+  margin-top: 1rem;
+  text-align: center;
 }
 
 /* Вопросы при добавлении: модификаторы строками, между группами разделитель, цена и ссылка справа */

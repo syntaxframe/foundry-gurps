@@ -1,0 +1,33 @@
+{{!-- Дистанционная атака: заголовок как сообщение GMentor в Discord, исход, крит, урон каждого снаряда против DR
+     и множитель ранения локации --}}
+<div class="gmentor-roll ranged-attack-roll">
+  <h3>{{title}}</h3>
+  {{#if ammoWarning}}<p class="warning">{{ammoWarning}}</p>{{/if}}
+  {{!-- Промах на 1 по мелкой цели пишется вместо исхода, как в GMentor --}}
+  {{#if missByOne}}<p class="outcome success">{{missByOne}}</p>
+  {{else}}<p class="outcome {{outcome}}">{{localize outcomeLabel}} ({{localize "GMENTOR.Roll.Margin"}} {{numberFormat margin sign=true}})</p>{{/if}}
+  {{#each notes}}<p class="note">{{this}}</p>{{/each}}
+  {{#if critical}}<p class="critical">{{critical}}</p>{{/if}}
+  {{#if hitText}}
+  <p>{{hitText}}</p>
+  <ul class="hits">
+    {{#each hits as |parts|}}
+    <li>
+      {{#each parts as |part|}}
+      {{#if part.rolled includeZero=true}}
+      {{part.rolled}}{{#if (ne part.multiplier 1)}} ×{{part.multiplier}} = {{part.damage}}{{/if}}{{#if part.dr}} −{{part.dr}} DR{{/if}}
+      = <strong>{{part.penetrating}}</strong> {{part.type}}
+      {{else}}{{part.text}}{{/if}}{{#unless @last}} + {{/unless}}
+      {{/each}}
+    </li>
+    {{/each}}
+  </ul>
+  {{#if total}}<p class="note">{{total}}</p>{{/if}}
+  {{#if wound}}
+  <div class="note-block">
+    {{#each wound.lines}}<p><b>{{this}}</b></p>{{/each}}
+    {{#if wound.notes}}<p>{{wound.notes}}</p>{{/if}}
+  </div>
+  {{/if}}
+  {{/if}}
+</div>

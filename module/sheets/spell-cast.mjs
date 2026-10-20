@@ -22,7 +22,7 @@ export default class SpellCastDialog extends HandlebarsApplicationMixin(Applicat
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["gmentor", "spell-cast", "themed", "theme-light"],
+    classes: ["gmentor", "tool-window", "spell-cast", "themed", "theme-light"],
     position: { width: 440 },
     form: { handler: SpellCastDialog.#onSubmit, closeOnSubmit: true }
   };

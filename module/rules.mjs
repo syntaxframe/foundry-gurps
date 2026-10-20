@@ -310,7 +310,7 @@ const DAMAGE_DICE = /\b(\d{1,2})d([+-]\d{1,2})?(?!x)/;
 const DAMAGE_BY_ST = /\b(sw|thr)([+-]\d{1,2})?\b/;
 
 /** Сколько кубиков в уроне оружия: у "sw+2" — сколько их в sw персонажа. */
-function damageDice(text, { thr, sw }) {
+export function damageDice(text, { thr, sw }) {
   const dice = String(text).match(DAMAGE_DICE);
   if ( dice ) return Number(dice[1]);
   const byST = String(text).match(DAMAGE_BY_ST);
@@ -513,4 +513,344 @@ export function spentEnergy(cost, outcome, hpInstead = 0) {
   else if ( outcome === "failure" ) spent = Math.min(cost, 1);
   const hp = Math.min(hpInstead, spent);
   return { fp: spent - hp, hp };
+}
+
+/* -------------------------------------------- */
+/*  Дистанционная атака                         */
+/* -------------------------------------------- */
+
+// Таблица размера и скорости/дистанции (B550): наибольшее расстояние в метрах для штрафа 0, −1, −2 …
+const RANGE_STEPS = [2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100, 150, 200, 300, 500, 700, 1000, 1500, 2000, 3000, 5000,
+  7000, 10000, 15000, 20000, 30000, 50000, 70000, 100000, 150000, 200000, 300000, 500000, 700000];
+
+/** Штраф за скорость плюс расстояние (B550), как getRangeSpeedModifier в GMentor: 10 м → −4, 100 м → −10. */
+export function rangeSpeedModifier(distance) {
+  const index = RANGE_STEPS.findIndex(step => distance <= step);
+  const steps = (index === -1) ? RANGE_STEPS.length : index;
+  return steps ? -steps : 0;
+}
+
+// Размер цели меньше 1.5 м (B550): наибольший размер для SM −15, −14 … −1
+const SMALL_SIZES = [0.005, 0.0085, 0.0127, 0.0169, 0.025, 0.038, 0.05, 0.0762, 0.1778, 0.2032, 0.3, 0.45, 0.6, 1, 1.5];
+
+/** Модификатор размера по наибольшему измерению в метрах (B550), как getSizeModifier в GMentor: 1.8 м → 0. */
+export function sizeModifier(size) {
+  const index = SMALL_SIZES.findIndex(limit => size < limit);
+  return index === -1 ? Math.abs(rangeSpeedModifier(size)) : index - SMALL_SIZES.length;
+}
+
+// Бонус скорострельности (B373): наибольшее число выстрелов для +0, +1 …
+const RAPID_FIRE_STEPS = [4, 8, 12, 16, 24, 49, 99, 200, 400, 800, 1600];
+
+/** Бонус за число выстрелов (B373), как getRofBonus в GMentor: 5–8 → +1, 9–12 → +2. */
+export function rapidFireBonus(shots) {
+  const index = RAPID_FIRE_STEPS.findIndex(step => shots <= step);
+  return index === -1 ? RAPID_FIRE_STEPS.length : index;
+}
+
+/**
+ * Куда целиться (B398–B400, Martial Arts), как список локаций инструментов GMentor. location — локация попадания
+ * для ранения: у щитовой руки та же, что у руки, у вен и суставов свои правила.
+ */
+export const ATTACK_LOCATIONS = [
+  { key: "random", location: "random", toHit: 0 },
+  { key: "torso", location: "torso", toHit: 0 },
+  { key: "arm", location: "arms", toHit: -2 },
+  { key: "shieldArm", location: "arms", toHit: -4 },
+  { key: "leg", location: "legs", toHit: -2 },
+  { key: "foot", location: "feet", toHit: -4 },
+  { key: "hand", location: "hands", toHit: -4 },
+  { key: "shieldHand", location: "hands", toHit: -8 },
+  { key: "skull", location: "skull", toHit: -7 },
+  { key: "face", location: "face", toHit: -5 },
+  { key: "neck", location: "neck", toHit: -5 },
+  { key: "groin", location: "groin", toHit: -3 },
+  { key: "eye", location: "eyes", toHit: -9 },
+  { key: "vitals", location: "vitals", toHit: -3 },
+  { key: "ear", location: "ear", toHit: -7 },
+  { key: "jaw", location: "jaw", toHit: -6 },
+  { key: "bigJoint", location: "bigJoint", toHit: -5 },
+  { key: "smallJoint", location: "smallJoint", toHit: -7 },
+  { key: "nose", location: "nose", toHit: -7 },
+  { key: "spine", location: "spine", toHit: -8 },
+  { key: "limbVein", location: "limbVein", toHit: -5 },
+  { key: "neckVein", location: "neckVein", toHit: -8 },
+  { key: "wing", location: "wings", toHit: -2 },
+  { key: "tail", location: "tail", toHit: -3 },
+  { key: "weaponSmall", location: "weapon", toHit: -5 },
+  { key: "weaponMedium", location: "weapon", toHit: -4 },
+  { key: "weaponLarge", location: "weapon", toHit: -3 }
+];
+
+// Промах на 1 по мелкой цели попадает в соседнюю (B400), как в GMentor; остальные — в торс
+const MISS_BY_ONE = { limbVein: "arms", neckVein: "neck", bigJoint: "arms", smallJoint: "hands" };
+const MISS_BY_ONE_TO_TORSO = ["eyes", "skull", "face", "groin", "neck", "vitals", "ear", "nose", "jaw", "spine"];
+
+/** Куда попадает промах на 1 при прицельной атаке (B400) или null, если по этой локации промах — промах. */
+export function missByOneLocation(location) {
+  if ( MISS_BY_ONE[location] ) return MISS_BY_ONE[location];
+  return MISS_BY_ONE_TO_TORSO.includes(location) ? "torso" : null;
+}
+
+/** Случайная локация по броску 3d6 (B552), как getRandomLocation в GMentor. */
+export function randomLocation(total) {
+  const location = LOCATIONS.find(({ roll }) => roll.split("/").some(part => {
+    const [from, to = from] = part.trim().split("–").map(Number);
+    return (total >= from) && (total <= to);
+  }));
+  return location?.key ?? "torso";
+}
+
+/** Дальность "25/50" → {half: 25, max: 50}; одно число — только максимальная дальность (B269). */
+export function parseRange(text) {
+  const numbers = String(text).split("/").map(part => parseFloat(part)).filter(Number.isFinite);
+  if ( numbers.length > 1 ) return { half: numbers[0], max: numbers[1] };
+  return { half: null, max: numbers[0] ?? null };
+}
+
+/**
+ * Скорострельность (B373): "3x9" — 3 выстрела по 9 снарядов (дробь), "20!" — только очередями,
+ * не меньше четверти RoF, как в GMentor.
+ * @returns {{rof: number, burst: number, minShots: number}}
+ */
+export function parseRateOfFire(text) {
+  const [rof, burst] = String(text).split("x").map(part => parseInt(part));
+  const rate = rof || 1;
+  return { rof: rate, burst: burst || 1, minShots: String(text).includes("!") ? Math.ceil(rate / 4) : 1 };
+}
+
+/**
+ * Бонус прицеливания (B364): первый раунд даёт Acc, второй +1, третий и дальше +2. Оптика (B278) прибавляется,
+ * когда раундов не меньше её бонуса; с переменным увеличением — по раунду, пока не наберётся весь бонус.
+ * Бонус оптики не больше Acc.
+ */
+export function aimBonus(rounds, accuracy, { optics = false, opticsBonus = 0, variable = true } = {}) {
+  if ( rounds <= 0 ) return 0;
+  let bonus = accuracy + Math.min(rounds - 1, 2);
+  if ( !optics ) return bonus;
+  const scope = Math.min(opticsBonus, accuracy);
+  if ( rounds >= scope ) bonus += scope;
+  else if ( variable ) bonus += rounds;
+  return bonus;
+}
+
+/**
+ * Итоговый навык дистанционной атаки, как toolRangedAttack в GMentor (B372, B548–B550). Флажки с постоянным
+ * модификатором (тотальная атака, плохая поверхность, транспорт) приходят суммой в options.
+ * @param {object} values
+ * @param {number} values.skill        Уровень оружия
+ * @param {number} values.modifier     Прочие модификаторы и сумма флажков
+ * @param {string} values.location     Ключ ATTACK_LOCATIONS
+ * @param {boolean} values.armorGaps   Сквозь щели в доспехах: −8 в торс, −10 в остальное вместо штрафа локации
+ * @param {number} values.aim          Бонус прицеливания (aimBonus); при движении и атаке и высовывании — 0
+ * @param {boolean} values.brace       Упор: +1 при прицеливании
+ * @param {number} values.distance     Расстояние, м
+ * @param {number} values.speed        Скорость цели, м/с
+ * @param {number} values.height       Разница высот, м: выше цели — плюс к дистанции, ниже — минус половина
+ * @param {number} values.heightFactor 1 — стрелок ниже цели, −0.5 — выше, 0 — на одной высоте
+ * @param {number} values.shots        Выстрелов, burst — снарядов в выстреле
+ * @param {boolean} values.pose        Цель пригнулась: −2 в торс, пах и ноги
+ * @param {number} values.size         Модификатор размера цели
+ * @param {number} values.lowSt        Штраф за недостаток ST (отрицательный или 0)
+ * @param {number} values.visibility   Видимость, −10 — темнота
+ * @param {boolean} values.unseen      Врага не видно: навык не выше 9
+ * @param {number} values.controlFailure  На сколько провален бросок управления транспортом
+ */
+export function rangedAttackTarget({ skill, modifier = 0, location = "torso", armorGaps = false, aim = 0,
+  brace = false, distance = 0, speed = 0, height = 0, heightFactor = 0, shots = 1, burst = 1, pose = false,
+  size = 0, lowSt = 0, visibility = 0, unseen = false, controlFailure = 0 }) {
+  let target = skill + modifier + lowSt + visibility + size - controlFailure;
+  const aimed = ATTACK_LOCATIONS.find(entry => entry.key === location) ?? ATTACK_LOCATIONS[1];
+  if ( armorGaps ) target += (aimed.location === "torso") ? -8 : -10;
+  else target += aimed.toHit;
+  if ( pose && ["torso", "leg", "groin"].includes(aimed.key) ) target -= 2;
+  target += aim + ((brace && (aim > 0)) ? 1 : 0);
+  // Стрелок выше цели сокращает расстояние, но не больше чем вдвое
+  let heightShift = Math.ceil(height * heightFactor);
+  if ( heightShift < -distance / 2 ) heightShift = -Math.floor(distance / 2);
+  target += rangeSpeedModifier(distance + speed + heightShift);
+  target += rapidFireBonus(burst * shots);
+  if ( unseen || (visibility <= -10) ) target = Math.min(target, 9);
+  return target;
+}
+
+/**
+ * Флажки окна атаки с постоянным модификатором (B548), как флажки с value в GMentor. Атака с транспорта — B467.
+ * Движение и атака (−2 или Bulk, если он хуже), бой вплотную (Bulk) и перекрывающие цель (−4 за каждого)
+ * зависят от оружия и считаются в rangedOptionsModifier.
+ */
+export const RANGED_ATTACK_OPTIONS = { allOutAttack: 1, badFooting: -2, offHand: -4, dualWeapons: -4, popUp: -2,
+  lightCover: -2, partlyHidden: -2, unfamiliar: -2, unseen: -6, unseenKnown: -4, opportunityCheck: -2 };
+
+export const VEHICLE_ATTACK_OPTIONS = { hanging: -6, turnedBack: -4, vehicleDodged: -2, aircraftDodged: -4,
+  goodRoadHandheld: -1, badRoadHandheld: -3, badRoadMount: -2, badRoadTurret: -1, offRoadHandheld: -4,
+  offRoadMount: -3, offRoadTurret: -2, offRoadStabilized: -1, calmWaterHandheld: -3, calmWaterMount: -2,
+  calmWaterTurret: -1, wavesHandheld: -4, wavesMount: -3, wavesTurret: -2, wavesStabilized: -1, aircraftHandheld: -1 };
+
+// Стрельба по возможности (B390): сколько клеток под наблюдением → штраф; линия — −2
+export const OPPORTUNITY_FIRE = { hex1: 0, hex2: -1, hex4: -2, hex6: -3, hex10: -4, hex11: -5, line: -2 };
+
+/**
+ * Сумма флажков окна атаки: постоянные модификаторы, движение и атака, бой вплотную, перекрывающие цель
+ * и стрельба по возможности.
+ * @param {object} options  Включённые флажки (ключи RANGED_ATTACK_OPTIONS и VEHICLE_ATTACK_OPTIONS),
+ *                          moveAndAttack, closeCombat, blockers — сколько людей перекрывают цель, opportunity
+ * @param {number} bulk     Громоздкость оружия
+ */
+export function rangedOptionsModifier(options, bulk) {
+  let modifier = 0;
+  for ( const [key, value] of Object.entries({ ...RANGED_ATTACK_OPTIONS, ...VEHICLE_ATTACK_OPTIONS }) ) {
+    if ( options[key] ) modifier += value;
+  }
+  if ( options.moveAndAttack ) modifier += Math.min(bulk, -2);
+  if ( options.closeCombat ) modifier += bulk;
+  if ( options.blockers > 0 ) modifier -= 4 * options.blockers;
+  if ( options.opportunity ) modifier += OPPORTUNITY_FIRE[options.opportunity] ?? 0;
+  return modifier;
+}
+
+/**
+ * Урон снаряда по обстоятельствам атаки, как toolRangedAttack в GMentor: прибавка Мастера оружия (B99),
+ * дальше 1/2D урон вдвое меньше (B269), дробь вплотную (ближе 10% от 1/2D) умножает урон и DR на половину
+ * дробин (B409), щели в доспехах вдвое уменьшают DR (B400). Часть без кубиков ("Paralysis") не меняется.
+ */
+export function rangedDamage(text, { adds = 0, halfDamage = false, shotgunFactor = 1, armorGaps = false } = {}) {
+  const record = damageRecord(text);
+  if ( !record ) return String(text).trim();
+  record.adds += adds;
+  if ( halfDamage ) record.multiplier *= 0.5;
+  if ( shotgunFactor > 1 ) {
+    record.dice *= shotgunFactor;
+    record.adds *= shotgunFactor;
+    record.divisor /= shotgunFactor;
+  }
+  if ( armorGaps ) record.divisor *= 2;
+  return damageRecordText(record);
+}
+
+/** Сколько снарядов попало (B373): 1 + запас успеха / отдача, но не больше выпущенных. */
+export function hitsFromMargin(margin, recoil, fired) {
+  return Math.min(1 + Math.floor(margin / Math.max(recoil, 1)), fired);
+}
+
+// Урон с множителем и делителем брони, как damageStrToObj в GMentor: "3d+1x0.5(2) pi+ rest"
+const DAMAGE_RECORD = /^(\d+)d(\d+)?([+-]\d+)?(?:x([\d.]+))?(?:\(([\d.]+)\))?\s*(burn|fat|tox|cor|cr|imp|cut|ex|pi\+\+|pi\+|pi-|pi)?(.*)$/i;
+
+/**
+ * Запись урона частями, чтобы менять их по обстоятельствам атаки (половина урона, дробь вплотную, щели в доспехах).
+ * @returns {{dice: number, sides: number, adds: number, multiplier: number, divisor: number, type: string, tail: string}|null}
+ */
+export function damageRecord(text) {
+  const match = String(text).trim().match(DAMAGE_RECORD);
+  if ( !match ) return null;
+  const [, dice, sides, adds, multiplier, divisor, type, tail] = match;
+  return { dice: Number(dice), sides: Number(sides ?? 6), adds: Number(adds ?? 0), multiplier: Number(multiplier ?? 1),
+    divisor: Number(divisor ?? 1), type: (type ?? "").toLowerCase(), tail: tail.trim() };
+}
+
+/** Запись урона обратно в текст, как damageObjToStr в GMentor: "2d+2x0.5(2) pi". */
+export function damageRecordText({ dice, sides, adds, multiplier, divisor, type, tail }) {
+  const round2 = number => Math.round(number * 100) / 100;
+  let text = `${dice}d${sides === 6 ? "" : sides}${adds ? signed(adds) : ""}`;
+  if ( multiplier !== 1 ) text += `x${round2(multiplier)}`;
+  if ( divisor !== 1 ) text += `(${round2(divisor)})`;
+  return [text, type, tail].filter(Boolean).join(" ");
+}
+
+/**
+ * Урон одного снаряда против DR (B378), как damageRoll в GMentor: результат кубиков × множитель, DR делится на
+ * делитель брони (не меньше 1, если она есть), урона не меньше 0.
+ * @returns {{damage: number, dr: number, penetrating: number}}
+ */
+export function penetratingDamage(rolled, { multiplier = 1, divisor = 1 } = {}, dr = 0) {
+  const damage = Math.round(rolled * multiplier);
+  const effectiveDr = dr > 0 ? Math.max(Math.round(dr / divisor - 0.0001), 1) : 0;
+  return { damage, dr: effectiveDr, penetrating: Math.max(damage - effectiveDr, 0) };
+}
+
+// Множители ранения по типу урона (B379) и у неживых, однородных целей (B380)
+const WOUNDING = {
+  normal: { "pi++": 2, "pi+": 1.5, "pi-": 0.5, imp: 2, cut: 1.5 },
+  unliving: { "pi++": 1, "pi+": 0.5, pi: 1 / 3, "pi-": 0.2, imp: 1, cut: 1.5 },
+  homogenous: { "pi++": 0.5, "pi+": 1 / 3, pi: 0.2, "pi-": 0.1, imp: 0.5, cut: 1.5 }
+};
+
+const LIMBS = ["arms", "legs", "feet", "hands", "bigJoint", "smallJoint"];
+
+/**
+ * Множитель ранения и пометки к попаданию (B379–B400), как toolLocationsTexts в GMentor. Пометки — ключи
+ * перевода GMENTOR.Attack.wound.*. У рассеянной цели (B380) рана не больше 1 от проникающих и 2 от остальных.
+ * Отличие от GMentor: режущий урон у неживых и однородных целей ×1.5, как в книге (в GMentor ×1).
+ * @returns {{multiplier: number, notes: string[], maxInjury: number|null}}
+ */
+export function woundingModifier(type, location, targetType = "normal") {
+  const piercing = type.startsWith("pi") || (type === "imp");
+  const notes = [];
+  let multiplier = (WOUNDING[targetType] ?? WOUNDING.normal)[type] ?? 1;
+  if ( targetType === "diffuse" ) multiplier = 1;
+
+  switch ( location ) {
+    case "vitals":
+      if ( piercing ) multiplier = 3;
+      if ( type === "burn" ) {
+        multiplier = 2;
+        notes.push("vitalsBurn");
+      }
+      break;
+    case "skull":
+    case "eyes":
+      if ( type !== "tox" ) {
+        multiplier = 4;
+        notes.push("stun10");
+      }
+      if ( (location === "eyes") && (piercing || (type === "burn")) ) notes.push("eyeBlinded");
+      break;
+    case "face":
+      notes.push("stun5");
+      if ( type === "cor" ) {
+        multiplier = 1.5;
+        notes.push("faceCorrosion");
+      }
+      break;
+    case "neck":
+      if ( (type === "cr") || (type === "cor") ) multiplier = 1.5;
+      if ( type === "cut" ) multiplier = 2;
+      break;
+    case "groin":
+      if ( type === "cr" ) notes.push("groinCrushing");
+      break;
+    case "ear":
+      notes.push("stun5");
+      if ( type === "cut" ) notes.push("earCut");
+      break;
+    case "nose":
+      notes.push("stun5", "noseBroken");
+      if ( type === "cut" ) notes.push("noseCut");
+      break;
+    case "jaw":
+      notes.push(type === "cr" ? "stun6" : "stun5");
+      break;
+    case "spine":
+      notes.push("spine");
+      break;
+    case "limbVein":
+    case "neckVein":
+      multiplier += 0.5;
+      if ( (location === "neckVein") && (type === "cut") ) multiplier += 0.5;
+      notes.push("veins");
+      break;
+    case "weapon":
+      multiplier = 1;
+      notes.push("weapon");
+      break;
+  }
+  if ( LIMBS.includes(location) ) {
+    if ( ["pi+", "pi++", "imp"].includes(type) ) multiplier = 1;
+    if ( (location === "arms") || (location === "legs") ) notes.push("crippledHalf");
+    else if ( location === "smallJoint" ) notes.push("crippledQuarter");
+    else notes.push("crippledThird");
+    if ( location.endsWith("Joint") ) notes.push("joint");
+  }
+  const maxInjury = (targetType === "diffuse") ? (piercing ? 1 : 2) : null;
+  return { multiplier: Math.round(multiplier * 1000) / 1000, notes, maxInjury };
 }
