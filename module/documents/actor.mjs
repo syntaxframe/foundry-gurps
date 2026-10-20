@@ -1,6 +1,7 @@
 import { conditionGroup } from "../conditions.mjs";
 import { ATTACK_LOCATIONS, damageParts, damageRecord, energyDamage, energyStep, hitsFromMargin, missByOneLocation,
   parseDamage, penetratingDamage, randomLocation, spentEnergy, successOutcome, woundingModifier } from "../rules.mjs";
+import { describeMeleeAttack } from "../sheets/melee-attack.mjs";
 import { describeRangedAttack } from "../sheets/ranged-attack.mjs";
 import { describeCasting } from "../sheets/spell-cast.mjs";
 
@@ -94,40 +95,13 @@ export default class GMentorActor extends Actor {
     const text = (key, data) => game.i18n.format(`GMENTOR.Attack.${key}`, data);
     const roll = await new Roll("3d6").evaluate();
     const rolls = [roll];
-    let { outcome, margin } = successOutcome(roll.total, attack.target);
-    const notes = [];
-
-    let location = ATTACK_LOCATIONS.find(entry => entry.key === values.location)?.location ?? "torso";
-    // Промах на 1 по мелкой цели попадает в соседнюю одним снарядом; 17 и 18 — всегда провал
-    let missByOne = null;
-    if ( (outcome === "failure") && (margin === -1) && (roll.total < 17) ) {
-      missByOne = missByOneLocation(location);
-      if ( missByOne ) {
-        location = missByOne;
-        outcome = "success";
-      }
-    }
-    if ( location === "random" ) {
-      const locationRoll = await new Roll("3d6").evaluate();
-      rolls.push(locationRoll);
-      location = randomLocation(locationRoll.total);
-      notes.push(text("randomLocation", { total: locationRoll.total }));
-    }
-
-    let critical = "";
-    if ( (outcome === "critSuccess") || (outcome === "critFailure") ) {
-      const critRoll = await new Roll("3d6").evaluate();
-      rolls.push(critRoll);
-      let table = "critMiss";
-      if ( outcome === "critSuccess" ) table = ["face", "skull"].includes(location) ? "critHead" : "critHit";
-      critical = `${text("critRoll", { total: critRoll.total })}. ${text(`${table}.${critRoll.total}`)}`;
-    }
+    const { outcome, margin, location, missByOne, critical, notes, hit } =
+      await this.#attackOutcome(roll, attack.target, values.location, "critMiss", rolls);
 
     let hitText = "";
     const hits = [];
     let total = 0;
     let wound = null;
-    const hit = (outcome === "success") || (outcome === "critSuccess");
     if ( hit ) {
       if ( attack.halfDamage ) notes.push(text("halfDamage"));
       if ( attack.shotgun ) notes.push(text("shotgun"));
@@ -165,6 +139,91 @@ export default class GMentorActor extends Actor {
       { create: false });
     messageData.rolls = rolls;
     return ChatMessage.implementation.create(messageData);
+  }
+
+  /**
+   * Контактная атака с условиями из окна атаки (MeleeAttackDialog), как toolMeleeAttack в GMentor (B369).
+   * Двойная тотальная атака и скоростной удар — несколько атак, каждая своим сообщением, как отдельные броски в GMentor.
+   * @param {Item} item       Оружие или заклинание
+   * @param {number} index    Индекс режима в item.system.weapons
+   * @param {object} values   Значения окна атаки
+   */
+  async meleeAttack(item, index, values) {
+    const attack = describeMeleeAttack(item, item.system.weapons[index], values);
+    for ( let i = 0; i < attack.attacks; i++ ) await this.#meleeStrike(item, attack, values);
+  }
+
+  /** Одна контактная атака: исход, крит (голыми руками — своя таблица промаха), урон удара против DR и ранение. */
+  async #meleeStrike(item, attack, values) {
+    const text = (key, data) => game.i18n.format(`GMENTOR.Attack.${key}`, data);
+    const roll = await new Roll("3d6").evaluate();
+    const rolls = [roll];
+    const critMiss = values.bareHands ? "critMissBare" : "critMiss";
+    const { outcome, margin, location, missByOne, critical, notes, hit } =
+      await this.#attackOutcome(roll, attack.target, values.location, critMiss, rolls);
+
+    let hitText = "";
+    const hits = [];
+    let wound = null;
+    if ( hit ) {
+      hitText = game.i18n.format("GMENTOR.MeleeAttack.hit", { damage: attack.damage, location: text(`hitLocation.${location}`) });
+      hits.push(await this.#rollProjectile(attack.damage, values.dr, rolls));
+      wound = this.#woundText(attack.damage, location, values.targetType);
+    }
+
+    const content = await foundry.applications.handlebars.renderTemplate("systems/gmentor/templates/chat/ranged-attack.hbs", {
+      title: text("rollTitle", { weapon: item.name, target: attack.target }),
+      outcome, margin, outcomeLabel: `GMENTOR.Roll.${outcome}`,
+      missByOne: missByOne && text("missByOne", { location: text(`hitLocation.${missByOne}`) }),
+      critical, hitText, notes, hits, wound
+    });
+    const messageData = await roll.toMessage({ speaker: ChatMessage.getSpeaker({ actor: this }), flavor: content },
+      { create: false });
+    messageData.rolls = rolls;
+    return ChatMessage.implementation.create(messageData);
+  }
+
+  /**
+   * Исход броска атаки, общий для дистанционной и контактной: промах на 1 по мелкой цели попадает в соседнюю
+   * локацию (B400; 17 и 18 — всегда провал), случайная локация — броском (B552), критический исход — броском
+   * по таблице (B556). Броски добавляются в rolls.
+   * @param {Roll} roll          Бросок атаки
+   * @param {number} target      Итоговый навык
+   * @param {string} aimedAt     Ключ ATTACK_LOCATIONS
+   * @param {string} critMiss    Таблица критического промаха: critMiss или critMissBare (голыми руками)
+   * @param {Roll[]} rolls
+   */
+  async #attackOutcome(roll, target, aimedAt, critMiss, rolls) {
+    const text = (key, data) => game.i18n.format(`GMENTOR.Attack.${key}`, data);
+    let { outcome, margin } = successOutcome(roll.total, target);
+    const notes = [];
+
+    let location = ATTACK_LOCATIONS.find(entry => entry.key === aimedAt)?.location ?? "torso";
+    let missByOne = null;
+    if ( (outcome === "failure") && (margin === -1) && (roll.total < 17) ) {
+      missByOne = missByOneLocation(location);
+      if ( missByOne ) {
+        location = missByOne;
+        outcome = "success";
+      }
+    }
+    if ( location === "random" ) {
+      const locationRoll = await new Roll("3d6").evaluate();
+      rolls.push(locationRoll);
+      location = randomLocation(locationRoll.total);
+      notes.push(text("randomLocation", { total: locationRoll.total }));
+    }
+
+    let critical = "";
+    if ( (outcome === "critSuccess") || (outcome === "critFailure") ) {
+      const critRoll = await new Roll("3d6").evaluate();
+      rolls.push(critRoll);
+      let table = critMiss;
+      if ( outcome === "critSuccess" ) table = ["face", "skull"].includes(location) ? "critHead" : "critHit";
+      critical = `${text("critRoll", { total: critRoll.total })}. ${text(`${table}.${critRoll.total}`)}`;
+    }
+    const hit = (outcome === "success") || (outcome === "critSuccess");
+    return { outcome, margin, location, missByOne, critical, notes, hit };
   }
 
   /**

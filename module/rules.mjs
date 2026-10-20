@@ -728,6 +728,66 @@ export function rangedDamage(text, { adds = 0, halfDamage = false, shotgunFactor
   return damageRecordText(record);
 }
 
+/**
+ * Флажки окна контактной атаки с постоянным модификатором (B547, B365), как флажки с value в toolMeleeAttack
+ * GMentor. Скоростной удар, обманная атака и щит в бою вплотную зависят от выбора и считаются в meleeAttackTarget.
+ */
+export const MELEE_ATTACK_OPTIONS = { determined: 4, moveAndAttack: -4, badFooting: -2, grappled: -4, offHand: -4,
+  dualWeapons: -4, intoCloseCombat: -2, wildSwing: -5, fromAbove: -2, largeShield: -2, mountAttacked: -2,
+  mountSpeed: -1, unseen: -6, unseenKnown: -4 };
+
+// Атаки, после которых навык не выше 9 (B365, B388, B394), как в GMentor
+const MELEE_CAPPED_OPTIONS = ["moveAndAttack", "wildSwing", "unseen", "unseenKnown"];
+
+/**
+ * Итоговый навык контактной атаки, как toolMeleeAttack в GMentor (B369, B547).
+ * @param {object} values
+ * @param {number} values.skill          Уровень оружия
+ * @param {number} values.modifier       Прочие модификаторы
+ * @param {string} values.location       Ключ ATTACK_LOCATIONS
+ * @param {boolean} values.armorGaps     Сквозь щели в доспехах: −8 в торс, −10 в остальное вместо штрафа локации
+ * @param {number} values.lowSt          Штраф за недостаток ST (отрицательный или 0)
+ * @param {boolean} values.rapidStrike   Скоростной удар (B370): −6, с Учеником мастера или Мастером оружия −3
+ * @param {boolean} values.trainedByMaster
+ * @param {number} values.deceptive      Обманная атака (B369): −2 за каждый −1 к защите противника
+ * @param {number} values.shieldDb       Бой вплотную со щитом (B391): −DB щита
+ * @param {number} values.evaluate       Оценка (B364): +1 за раунд
+ * @param {number} values.pose           Поза атакующего (B551)
+ * @param {number} values.visibility     Видимость, −10 — темнота
+ */
+export function meleeAttackTarget({ skill, modifier = 0, location = "torso", armorGaps = false, lowSt = 0,
+  rapidStrike = false, trainedByMaster = false, deceptive = 0, shieldDb = 0, evaluate = 0, pose = 0,
+  visibility = 0, ...options }) {
+  let target = skill + modifier + lowSt + evaluate + pose + visibility - shieldDb - 2 * deceptive;
+  const aimed = ATTACK_LOCATIONS.find(entry => entry.key === location) ?? ATTACK_LOCATIONS[1];
+  if ( armorGaps ) target += (aimed.location === "torso") ? -8 : -10;
+  else target += aimed.toHit;
+  if ( rapidStrike ) target += trainedByMaster ? -3 : -6;
+  for ( const [key, value] of Object.entries(MELEE_ATTACK_OPTIONS) ) {
+    if ( options[key] ) target += value;
+  }
+  const capped = MELEE_CAPPED_OPTIONS.some(key => options[key]) || (visibility <= -10);
+  return capped ? Math.min(target, 9) : target;
+}
+
+/**
+ * Урон удара по обстоятельствам, как toolMeleeAttack в GMentor: прибавка (Мастер оружия B99, сильная тотальная атака
+ * B365) переводится в кубики (каждые 3.5 — кубик, B269), если не просили иначе; щели в доспехах вдвое уменьшают
+ * DR (B400). Часть без кубиков ("Paralysis") не меняется.
+ */
+export function meleeDamage(text, { adds = 0, convertDice = true, armorGaps = false } = {}) {
+  const record = damageRecord(text);
+  if ( !record ) return String(text).trim();
+  record.adds += adds;
+  if ( convertDice && (record.sides === 6) ) {
+    const [dice, mod = "0"] = addDamage(`${record.dice}d${record.adds ? signed(record.adds) : ""}`, 0).split("d");
+    record.dice = Number(dice);
+    record.adds = Number(mod);
+  }
+  if ( armorGaps ) record.divisor *= 2;
+  return damageRecordText(record);
+}
+
 /** Сколько снарядов попало (B373): 1 + запас успеха / отдача, но не больше выпущенных. */
 export function hitsFromMargin(margin, recoil, fired) {
   return Math.min(1 + Math.floor(margin / Math.max(recoil, 1)), fired);

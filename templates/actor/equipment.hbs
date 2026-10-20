@@ -1,63 +1,61 @@
 <section class="tab equipment {{tab.cssClass}}" data-group="{{tab.group}}" data-tab="{{tab.id}}">
-  <h3>
-    {{localize "GMENTOR.Equipment"}}
-    <a class="add" data-action="addItem" data-type="equipment" data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
-  </h3>
-  <table class="item-table">
-    <thead><tr>
-      <th></th>
-      <th class="name">{{localize "Name"}}</th>
-      <th>{{localize "GMENTOR.Quantity"}}</th>
-      <th>{{localize "GMENTOR.Weight"}}, {{localize "GMENTOR.Kg"}}</th>
-      <th>{{localize "GMENTOR.Value"}}</th>
-      <th>{{localize "GMENTOR.TL"}}</th>
-      <th data-tooltip="GMENTOR.LegalityClassHint">{{localize "GMENTOR.LegalityClass"}}</th>
-      <th>{{localize "GMENTOR.Reference"}}</th>
-      <th></th>
-    </tr></thead>
-    <tbody>
-      {{#each equipment}}
-      {{!-- Содержимое контейнера — следующими строками с отступом depth. Перетаскивание на контейнер кладёт внутрь --}}
-      <tr data-item-id="{{item.id}}" class="draggable {{item.system.state}} {{#if item.system.isContainer}}container{{/if}}">
-        <td>
-          <a class="equipment-state" data-action="cycleState" data-tooltip="{{localize (concat "GMENTOR.State." item.system.state)}}. {{localize "GMENTOR.StateHint"}}">
-            <i class="fa-solid {{#if (eq item.system.state "equipped")}}fa-shirt{{else if (eq item.system.state "carried")}}fa-suitcase{{else}}fa-box-archive{{/if}}" inert></i>
-          </a>
-        </td>
-        <td class="name" style="--depth: {{depth}}">
-          {{#if hasContents}}
-          <a class="container-toggle" data-action="toggleContainer" data-tooltip="GMENTOR.ContainerToggle">
-            <i class="fa-solid {{#if collapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}" inert></i></a>
-          {{/if}}
-          <a data-action="editItem">{{item.name}}</a>
-          {{!-- Невыполненные требования, как prereq-fail в GMentor --}}
-          {{#if unmetPrereqs}}<i class="fa-solid fa-triangle-exclamation warning" data-tooltip-text="{{unmetPrereqs}}"></i>{{/if}}
-          {{#with item.system.contents}}
-          <span class="container-contents {{#if overCapacity}}warning{{/if}}" {{#if overCapacity}}data-tooltip="GMENTOR.OverCapacity"{{/if}}>
-            {{localize "GMENTOR.ContainerContents" count=count}}: {{weight}}{{#if ../item.system.capacity}} / {{../item.system.capacity}}{{/if}} {{localize "GMENTOR.Kg"}}, ${{value}}
-          </span>
-          {{/with}}
+  <div class="card item-list">
+    {{!-- Заголовок с итогами, как у списка снаряжения GMentor: «Снаряжение 3 кг $500 | стартовые деньги…» (B25–B27) --}}
+    <h3>
+      <span class="equipment-totals">
+        {{localize "GMENTOR.Equipment"}} {{system.encumbrance.weight}} {{localize "GMENTOR.Kg"}} {{wealth.equipmentValue}}
+        {{#if system.encumbrance.storedWeight}}({{localize "GMENTOR.State.stored"}}: {{system.encumbrance.storedWeight}} {{localize "GMENTOR.Kg"}}){{/if}}
+        | <span data-tooltip="GMENTOR.StartingWealthHint">{{localize "GMENTOR.StartingWealth"}}: {{wealth.starting}}{{#if (ne wealth.multiplier 1)}} (×{{wealth.multiplierText}}){{/if}}{{#if wealth.forEquipment}}, {{localize "GMENTOR.ForEquipment"}} {{wealth.forEquipment}}{{/if}}</span>
+      </span>
+      <span class="list-tools">
+        <a class="{{#if equipment.showDescriptions}}active{{/if}}" data-action="toggleDescriptions" data-type="equipment"
+           data-tooltip="GMENTOR.ShowDescriptions"><i class="fa-solid fa-align-left" inert></i></a>
+        <a data-action="sortByName" data-type="equipment" data-tooltip="GMENTOR.SortByName">
+          <i class="fa-solid fa-arrow-down-a-z" inert></i></a>
+        <a data-action="addItem" data-type="equipment" data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
+      </span>
+    </h3>
+    <ol>
+      {{#each equipment.rows}}
+      {{!-- Строка как в GMentor: состояние, название, цена, вес, количество; пометки и режимы оружия ниже.
+            Содержимое контейнера — следующими строками с отступом depth. Перетаскивание на контейнер кладёт внутрь --}}
+      <li class="item-row equipment-row draggable {{item.system.state}}" data-item-id="{{item.id}}" style="--depth: {{depth}}">
+        {{#if hasContents}}
+        <a class="container-toggle" data-action="toggleContainer" data-tooltip="GMENTOR.ContainerToggle">
+          <i class="fa-solid {{#if collapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}" inert></i></a>
+        {{/if}}
+        {{!-- Флажок: надето — с галочкой, с собой — закрашен, не с собой — пустой (equipped в GMentor) --}}
+        <a class="equipment-state" data-action="cycleState" data-tooltip="{{localize (concat "GMENTOR.State." item.system.state)}}. {{localize "GMENTOR.StateHint"}}">
+          <i class="{{#if (eq item.system.state "equipped")}}fa-solid fa-square-check{{else if (eq item.system.state "carried")}}fa-solid fa-square{{else}}fa-regular fa-square{{/if}}" inert></i>
+        </a>
+        <a class="item-name" data-action="editItem">{{item.name}}</a>
+        {{!-- Невыполненные требования, как prereq-fail в GMentor --}}
+        {{#if unmetPrereqs}}<i class="fa-solid fa-triangle-exclamation warning" data-tooltip-text="{{unmetPrereqs}}"></i>{{/if}}
+        {{#with item.system.contents}}
+        <span class="container-contents {{#if overCapacity}}warning{{/if}}" {{#if overCapacity}}data-tooltip="GMENTOR.OverCapacity"{{/if}}>
+          {{localize "GMENTOR.ContainerContents" count=count}}: {{weight}}{{#if ../item.system.capacity}} / {{../item.system.capacity}}{{/if}} {{localize "GMENTOR.Kg"}}, ${{value}}
+        </span>
+        {{/with}}
+        {{> "systems/gmentor/templates/actor/item-row.hbs"}}
+        {{!-- С учётом модификаторов в предмете (пластик легче, отличное качество дороже); исходное — в подсказке --}}
+        <span class="equipment-value" {{#if (ne item.system.valueFactor 1)}}data-tooltip-text="{{item.system.value}} × {{item.system.valueFactor}}"{{/if}}>
+          {{#if item.system.effectiveValue}}<span class="unit">$</span>{{item.system.effectiveValue}}{{/if}}</span>
+        <span class="equipment-weight" {{#if (ne item.system.weightFactor 1)}}data-tooltip-text="{{item.system.weight}} × {{item.system.weightFactor}}"{{/if}}>
+          {{#if item.system.effectiveWeight}}{{item.system.effectiveWeight}} <span class="unit">{{localize "GMENTOR.Kg"}}</span>{{/if}}</span>
+        {{!-- Одна штука — бледно, как gc-equipment-singe --}}
+        <span class="equipment-quantity {{#if (eq item.system.quantity 1)}}single{{/if}}">
+          {{item.system.quantity}} <span class="unit">{{localize "GMENTOR.Pieces"}}</span></span>
+
+        {{#if (or item.system.notes effects)}}
+        <div class="item-details">
           {{#if item.system.notes}}<span class="item-notes">{{item.system.notes}}</span>{{/if}}
           {{#if effects}}<span class="item-effects">{{effects}}</span>{{/if}}
-        </td>
-        <td>{{item.system.quantity}}</td>
-        {{!-- С учётом модификаторов в предмете (пластик легче, отличное качество дороже); исходное — в подсказке --}}
-        <td {{#if (ne item.system.weightFactor 1)}}data-tooltip-text="{{item.system.weight}} × {{item.system.weightFactor}}"{{/if}}>{{item.system.effectiveWeight}}</td>
-        <td {{#if (ne item.system.valueFactor 1)}}data-tooltip-text="{{item.system.value}} × {{item.system.valueFactor}}"{{/if}}>{{item.system.effectiveValue}}</td>
-        <td>{{item.system.techLevel}}</td>
-        <td>{{item.system.legalityClass}}</td>
-        <td>{{item.system.reference}}</td>
-        <td>{{> "systems/gmentor/templates/actor/item-row.hbs"}}</td>
-      </tr>
+        </div>
+        {{/if}}
+        {{> "systems/gmentor/templates/actor/weapon-modes.hbs"}}
+        {{#if description}}<div class="item-description">{{{description}}}</div>{{/if}}
+      </li>
       {{/each}}
-    </tbody>
-  </table>
-  {{!-- Итоги, как заголовок списка снаряжения в GMentor: вес, цена и стартовые деньги (B25–B27) --}}
-  <p class="equipment-totals">
-    <span>{{localize "GMENTOR.Carried"}}: {{system.encumbrance.weight}} {{localize "GMENTOR.Kg"}} —
-      {{localize (concat "GMENTOR.Enc." system.encumbrance.level)}}</span>
-    {{#if system.encumbrance.storedWeight}}<span>{{localize "GMENTOR.State.stored"}}: {{system.encumbrance.storedWeight}} {{localize "GMENTOR.Kg"}}</span>{{/if}}
-    <span>{{localize "GMENTOR.EquipmentValue"}}: {{wealth.equipmentValue}}</span>
-    <span data-tooltip="GMENTOR.StartingWealthHint">{{localize "GMENTOR.StartingWealth"}}: {{wealth.starting}}{{#if (ne wealth.multiplier 1)}} (×{{wealth.multiplierText}}){{/if}}{{#if wealth.forEquipment}}, {{localize "GMENTOR.ForEquipment"}} {{wealth.forEquipment}}{{/if}}</span>
-  </p>
+    </ol>
+  </div>
 </section>

@@ -3,6 +3,7 @@ import { PROFILE_FIELDS, SENSES } from "../data/character.mjs";
 import { VEHICLE_FIELDS } from "../data/items.mjs";
 import { toIdentifier } from "../rules.mjs";
 import ItemPicker from "./item-picker.mjs";
+import MeleeAttackDialog from "./melee-attack.mjs";
 import RangedAttackDialog from "./ranged-attack.mjs";
 import SpellCastDialog from "./spell-cast.mjs";
 import { setupItemData } from "./item-setup.mjs";
@@ -58,6 +59,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     actions: {
       roll: CharacterSheet.#onRoll,
       castSpell: CharacterSheet.#onCastSpell,
+      meleeAttack: CharacterSheet.#onMeleeAttack,
       rangedAttack: CharacterSheet.#onRangedAttack,
       stepValue: CharacterSheet.#onStepValue,
       rollDamage: CharacterSheet.#onRollDamage,
@@ -133,7 +135,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       advantages: await this.#prepareList("advantage", "GMENTOR.AdvantagesList"),
       skills: await this.#prepareList("skill", "GMENTOR.Skills"),
       spells: await this.#prepareList("spell", "GMENTOR.Spells"),
-      equipment: this.#prepareEquipment(equipment),
+      equipment: await this.#prepareEquipment(equipment),
       ...this.#prepareWeapons(equipment),
       ...this.#prepareVehicles(equipment),
       wealth: this.#prepareWealth(),
@@ -183,11 +185,13 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   }
 
   /**
-   * Строки вкладки снаряжения деревом: содержимое контейнера идёт сразу под ним с отступом depth.
+   * Список снаряжения деревом: содержимое контейнера идёт сразу под ним с отступом depth.
    * Предмет, чей контейнер не найден (удалён на другом клиенте), показываем на верхнем уровне.
+   * Под каждым предметом — его режимы оружия, как в списке снаряжения GMentor.
    * @param {Item[]} equipment  Снаряжение в порядке sort
    */
-  #prepareEquipment(equipment) {
+  async #prepareEquipment(equipment) {
+    const showDescriptions = this.#shownDescriptions.has("equipment");
     const ids = new Set(equipment.map(item => item.id));
     const childrenOf = id => equipment.filter(item => (ids.has(item.system.containerId) ? item.system.containerId : "") === id);
     const rows = [];
@@ -198,12 +202,20 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
         const collapsed = this.#collapsedContainers.has(item.id);
         const effects = [this.#traitEffects(item), this.#modifierEffects(item)].filter(Boolean).join(", ");
         const unmetPrereqs = this.#unmetPrereqsText(item);
-        rows.push({ item, depth, hasContents, collapsed, effects, unmetPrereqs });
+        rows.push({ item, depth, hasContents, collapsed, effects, unmetPrereqs, weapons: this.#weaponRows(item) });
         if ( hasContents && !collapsed ) addRows(item.id, depth + 1);
       }
     };
     addRows("", 0);
-    return rows;
+    if ( showDescriptions ) {
+      for ( const row of rows ) {
+        if ( !row.item.system.description ) continue;
+        row.description = await foundry.applications.ux.TextEditor.implementation.enrichHTML(row.item.system.description, {
+          secrets: this.actor.isOwner, relativeTo: row.item
+        });
+      }
+    }
+    return { type: "equipment", showDescriptions, rows };
   }
 
   /** Цена снаряжения и стартовые деньги для итогов вкладки снаряжения, с разделителями разрядов. */
@@ -371,10 +383,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
    * требования — блоком, только если какое-то не выполнено (prereq-fail).
    */
   #spellRow(item) {
-    // У областных заклинаний умолчаний нет: GMentor тогда ничего не пишет вместо «нет подходящего умения»
-    const weapons = item.system.weapons.map((mode, index) => ({
-      mode, index, levelHint: mode.defaults.length ? this.#weaponLevelHint(mode) : ""
-    }));
+    const weapons = this.#weaponRows(item);
     if ( !item.system.unmetPrereqs.length ) return { weapons, prereqs: null };
     const prereqs = item.system.prereqStatus.map(group => ({
       met: group.met,
@@ -382,6 +391,14 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       entries: group.anyOf.map(({ prereq, met }) => ({ text: this.#prereqText(prereq), met }))
     }));
     return { weapons, prereqs };
+  }
+
+  /** Режимы оружия для строки списка (партиал weapon-modes.hbs) с подсказкой, откуда уровень. */
+  #weaponRows(item) {
+    // У областных заклинаний умолчаний нет: GMentor тогда ничего не пишет вместо «нет подходящего умения»
+    return item.system.weapons.map((mode, index) => ({
+      mode, index, levelHint: mode.defaults.length ? this.#weaponLevelHint(mode) : ""
+    }));
   }
 
   /** Что модификатор оружия меняет, одной строкой: «Урон +1, Цена × 4». */
@@ -576,6 +593,13 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     return new RangedAttackDialog({ item, mode: Number(target.dataset.mode) }).render({ force: true });
   }
 
+  /** Уровень контактного режима: окно атаки, как в GMentor; с Shift — простой бросок без окна. */
+  static #onMeleeAttack(event, target) {
+    if ( event.shiftKey ) return this.actor.rollSuccess(target.dataset.label, Number(target.dataset.value));
+    const item = this.#getItem(target);
+    return new MeleeAttackDialog({ item, mode: Number(target.dataset.mode) }).render({ force: true });
+  }
+
   /** Стрелка панели: изменить итог на шаг поля, с Ctrl — на 10 шагов. */
   static #onStepValue(event, target) {
     const input = target.closest(".char-input").querySelector("input");
@@ -707,7 +731,8 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const type = target.dataset.type;
     if ( this.#shownDescriptions.has(type) ) this.#shownDescriptions.delete(type);
     else this.#shownDescriptions.add(type);
-    return this.render({ parts: [type === "spell" ? "spells" : "abilities"] });
+    const part = { spell: "spells", equipment: "equipment" }[type] ?? "abilities";
+    return this.render({ parts: [part] });
   }
 
   static #onEditItem(event, target) {

@@ -1,0 +1,28 @@
+{{!-- Режимы оружия строками под предметом, как melee_weapon / ranged_weapon в списках GMentor:
+      «Dmg 1d+1 cut ST 10 Reach 1 Parry 0», справа откуда уровень и сам уровень. Пустые поля не выводятся --}}
+{{#each weapons}}
+<div class="spell-weapon">
+  <span class="weapon-stats">
+    <span><span class="label">{{localize "GMENTOR.WeaponShort.damage"}}</span>
+      {{#if mode.rollable}}<a class="rollable" data-action="rollDamage" data-label="{{../item.name}}" data-damage="{{mode.damageText}}">{{mode.damageText}}</a>{{else}}{{mode.damageText}}{{/if}}</span>
+    {{#if mode.minSt}}<span class="{{#if mode.weak}}warning{{/if}}" {{#if mode.weak}}data-tooltip="GMENTOR.WeakHint"{{/if}}><span class="label">{{localize "GMENTOR.WeaponShort.strength"}}</span>{{mode.minSt}}</span>{{/if}}
+    {{#if (eq mode.type "ranged")}}
+    {{#if mode.accuracyText}}<span><span class="label">{{localize "GMENTOR.WeaponShort.accuracy"}}</span>{{mode.accuracyText}}</span>{{/if}}
+    {{#if mode.rangeText}}<span><span class="label">{{localize "GMENTOR.WeaponShort.range"}}</span>{{mode.rangeText}}</span>{{/if}}
+    {{#if mode.rateOfFire}}<span><span class="label">{{localize "GMENTOR.WeaponShort.rateOfFire"}}</span>{{mode.rateOfFire}}</span>{{/if}}
+    {{#if mode.shots}}<span><span class="label">{{localize "GMENTOR.WeaponShort.shots"}}</span>{{mode.shots}}</span>{{/if}}
+    {{#if mode.bulk}}<span><span class="label">{{localize "GMENTOR.WeaponShort.bulk"}}</span>{{mode.bulk}}</span>{{/if}}
+    {{#if mode.recoil}}<span><span class="label">{{localize "GMENTOR.WeaponShort.recoil"}}</span>{{mode.recoil}}</span>{{/if}}
+    {{else}}
+    {{#if mode.reach}}<span><span class="label">{{localize "GMENTOR.WeaponShort.reach"}}</span>{{mode.reach}}</span>{{/if}}
+    {{#if mode.parry}}<span><span class="label">{{localize "GMENTOR.WeaponShort.parry"}}</span>{{#if mode.parryResult}}{{mode.parryResult.value}}{{mode.parryResult.note}}{{else}}{{mode.parry}}{{/if}}</span>{{/if}}
+    {{#if mode.block}}<span><span class="label">{{localize "GMENTOR.WeaponShort.block"}}</span>{{#if mode.blockResult}}{{mode.blockResult.value}}{{mode.blockResult.note}}{{else}}{{mode.block}}{{/if}}</span>{{/if}}
+    {{/if}}
+  </span>
+  <span class="weapon-source">{{levelHint}}</span>
+  {{#if (ne mode.level null)}}
+  <a class="weapon-level rollable" data-action="{{#if (eq mode.type "ranged")}}rangedAttack{{else}}meleeAttack{{/if}}"
+    data-label="{{../item.name}}" data-value="{{mode.level}}" data-mode="{{index}}">{{mode.level}}</a>
+  {{else}}<span class="weapon-level">—</span>{{/if}}
+</div>
+{{/each}}

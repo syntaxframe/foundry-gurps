@@ -619,10 +619,6 @@
   color: var(--gm-warn);
 }
 
-.gmentor .item-table tr.stored {
-  opacity: 0.5;
-}
-
 .gmentor .controls {
   display: inline-flex;
   gap: 0.5rem;
@@ -1454,94 +1450,98 @@
   overflow-y: auto;
 }
 
-/* Окно дистанционной атаки: данные оружия строкой, отступы для оптики и упора, раскрывающиеся модификаторы */
-.gmentor.ranged-attack .inline-value.big {
+/* Окна атаки (дистанционной и контактной): данные оружия строкой, отступы для оптики и упора, раскрывающиеся модификаторы */
+.gmentor.attack-window .inline-value.big {
   text-decoration: underline;
   text-decoration-color: var(--gm-underline);
 }
 
-.gmentor.ranged-attack select.inline-value.big option {
+.gmentor.attack-window select.inline-value.big option {
   font-size: 80%;
 }
 
-.gmentor.ranged-attack .location-hint {
+.gmentor.attack-window .location-hint {
   margin-left: 70px;
 }
 
 /* Длинная подпись флажка переносится под текст, а не под флажок */
-.gmentor.ranged-attack .line > label {
+.gmentor.attack-window .line > label {
   display: inline-block;
   padding-left: 20px;
 }
 
-.gmentor.ranged-attack .line > label > input[type=checkbox] {
+.gmentor.attack-window .line > label > input[type=checkbox] {
   margin: 0 5px 0 -20px;
 }
 
-.gmentor.ranged-attack .weapon-line {
+.gmentor.attack-window .weapon-line {
   margin: 0.25rem 0;
   font-size: 0.9rem;
 }
 
-.gmentor.ranged-attack .weapon-line .label {
+.gmentor.attack-window .weapon-line .label {
   color: var(--gm-soft);
 }
 
-.gmentor.ranged-attack .value {
+.gmentor.attack-window .value {
   color: var(--gm-accent);
 }
 
-.gmentor.ranged-attack .split {
+.gmentor.attack-window .split {
   display: flex;
   justify-content: space-between;
 }
 
-.gmentor.ranged-attack .indent {
+.gmentor.attack-window .indent {
   margin-left: 1.25rem;
 }
 
-.gmentor.ranged-attack .gap {
+.gmentor.attack-window .gap {
   margin-top: 1.5rem;
 }
 
-.gmentor.ranged-attack .note.warning,
-.gmentor.ranged-attack .inline-value.warning {
+.gmentor.attack-window .note.warning,
+.gmentor.attack-window .inline-value.warning {
   color: var(--gm-warn);
 }
 
-.gmentor.ranged-attack .inline-value.info {
+.gmentor.attack-window .inline-value.info {
   color: var(--gm-info);
 }
 
-.gmentor.ranged-attack details {
+.gmentor.attack-window details {
   margin: 1rem 0 0;
 }
 
-.gmentor.ranged-attack details details {
+.gmentor.attack-window details details {
   margin-left: 0;
 }
 
-.gmentor.ranged-attack summary {
+.gmentor.attack-window summary {
   color: var(--gm-accent);
   font-size: 1.4rem;
   cursor: pointer;
 }
 
-.gmentor.ranged-attack details details summary {
+.gmentor.attack-window details details summary {
   font-size: 1rem;
 }
 
-.gmentor.ranged-attack summary .book-ref {
+.gmentor.attack-window summary .book-ref {
   float: right;
   font-size: 1rem;
 }
 
-.gmentor.ranged-attack details > .line,
-.gmentor.ranged-attack details > details {
+.gmentor.attack-window details > .line,
+.gmentor.attack-window details > details {
   margin-left: 1.25rem;
 }
 
-.gmentor.ranged-attack .damage-preview {
+.gmentor.attack-window details > .line.indent {
+  margin-left: 2.5rem;
+}
+
+.gmentor.attack-window .damage-preview {
   margin-top: 1rem;
   text-align: center;
 }
@@ -1667,16 +1667,59 @@
   color: var(--gm-dim);
 }
 
-/* Снаряжение: значок «надето / с собой / не с собой», пометка и эффекты под названием */
-.gmentor .equipment-state {
+/*
+ * Список снаряжения как в GMentor: флажок состояния серым, название синим, справа колонки «$цена», «вес кг»,
+ * «N шт.» через тонкую линию. Пометки, режимы оружия и описание — строками ниже. Не с собой — бледно.
+ */
+.gmentor .equipment-row {
+  padding-left: calc(var(--depth, 0) * 1.25rem);
+}
+
+.gmentor .equipment-row.stored {
+  opacity: 0.5;
+}
+
+.gmentor .equipment-row .item-name {
   color: var(--gm-accent);
 }
 
-.gmentor .item-table .name .item-notes,
-.gmentor .item-table .name .item-effects {
-  display: block;
-  font-size: 0.75rem;
+.gmentor .equipment-state {
+  color: var(--gm-line);
+}
+
+.gmentor .equipment-state:hover {
+  color: var(--gm-accent);
+}
+
+.gmentor .equipment-value,
+.gmentor .equipment-weight,
+.gmentor .equipment-quantity {
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--gm-line);
+  color: var(--gm-accent);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.gmentor .equipment-value {
+  min-width: 4.5rem;
+}
+
+.gmentor .equipment-weight {
+  min-width: 3.5rem;
+}
+
+.gmentor .equipment-quantity {
+  min-width: 2.75rem;
+}
+
+.gmentor .equipment-quantity.single {
+  opacity: 0.5;
+}
+
+.gmentor .equipment-row .unit {
   color: var(--gm-dim);
+  font-size: 0.75em;
 }
 
 /* Лист снаряжения: режим оружия рамкой, поля сеткой, умолчания строками */
@@ -1731,24 +1774,19 @@
   flex: 0 0 3.5rem;
 }
 
-/* Контейнеры: содержимое с отступом по глубине вложенности, под названием — вес и цена содержимого */
-.gmentor .tab.equipment td.name {
-  padding-left: calc(4px + var(--depth, 0) * 1.25rem);
-}
-
+/* Контейнеры: содержимое с отступом по глубине вложенности, у названия — вес и цена содержимого */
 .gmentor .container-toggle {
   display: inline-block;
   width: 0.8rem;
   color: var(--gm-dim);
 }
 
-.gmentor .item-table .name .container-contents {
-  display: block;
+.gmentor .container-contents {
   font-size: 0.75rem;
   color: var(--gm-dim);
 }
 
-.gmentor .item-table .name .container-contents.warning {
+.gmentor .container-contents.warning {
   color: var(--gm-warn);
 }
 
@@ -1773,9 +1811,13 @@
   color: var(--gm-accent);
 }
 
-/* Итоги под списком снаряжения: вес, цена, стартовые деньги — через разделитель, переносятся при нехватке места */
-.gmentor .equipment-totals {
+/* Итоги в заголовке списка снаряжения, как в GMentor; панель инструментов справа */
+.gmentor .tab.equipment .item-list h3 {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.5rem;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.gmentor .equipment-totals {
+  flex: 1;
 }

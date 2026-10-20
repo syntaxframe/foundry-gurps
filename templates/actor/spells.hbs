@@ -14,26 +14,7 @@
         {{> "systems/gmentor/templates/actor/item-row.hbs"}}
         {{> "systems/gmentor/templates/actor/learned-values.hbs"}}
 
-        {{#each weapons}}
-        <div class="spell-weapon">
-          <span class="weapon-stats">
-            <span><span class="label">{{localize "GMENTOR.WeaponShort.damage"}}</span>
-              {{#if mode.rollable}}<a class="rollable" data-action="rollDamage" data-label="{{../item.name}}" data-damage="{{mode.damageText}}">{{mode.damageText}}</a>{{else}}{{mode.damageText}}{{/if}}</span>
-            {{#if (eq mode.type "ranged")}}
-            {{#if mode.accuracyText}}<span><span class="label">{{localize "GMENTOR.WeaponShort.accuracy"}}</span>{{mode.accuracyText}}</span>{{/if}}
-            {{#if mode.rangeText}}<span><span class="label">{{localize "GMENTOR.WeaponShort.range"}}</span>{{mode.rangeText}}</span>{{/if}}
-            {{else}}
-            {{#if mode.reach}}<span><span class="label">{{localize "GMENTOR.WeaponShort.reach"}}</span>{{mode.reach}}</span>{{/if}}
-            {{#if mode.parry}}<span><span class="label">{{localize "GMENTOR.WeaponShort.parry"}}</span>{{#if mode.parryResult}}{{mode.parryResult.value}}{{mode.parryResult.note}}{{else}}{{mode.parry}}{{/if}}</span>{{/if}}
-            {{/if}}
-          </span>
-          <span class="weapon-source">{{levelHint}}</span>
-          {{#if (ne mode.level null)}}
-          <a class="weapon-level rollable" data-action="{{#if (eq mode.type "ranged")}}rangedAttack{{else}}roll{{/if}}"
-            data-label="{{../item.name}}" data-value="{{mode.level}}" data-mode="{{index}}">{{mode.level}}</a>
-          {{else}}<span class="weapon-level">—</span>{{/if}}
-        </div>
-        {{/each}}
+        {{> "systems/gmentor/templates/actor/weapon-modes.hbs"}}
 
         {{!-- Требования, если какое-то не выполнено: выполненные бледно, как prereq-ok в GMentor --}}
         {{#if prereqs}}

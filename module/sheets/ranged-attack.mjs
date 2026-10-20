@@ -25,7 +25,7 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["gmentor", "tool-window", "ranged-attack", "themed", "theme-light"],
+    classes: ["gmentor", "tool-window", "attack-window", "ranged-attack", "themed", "theme-light"],
     position: { width: 500 },
     form: { handler: RangedAttackDialog.#onSubmit, closeOnSubmit: false }
   };

@@ -1,0 +1,94 @@
+{{!-- Окно контактной атаки как инструмент GMentor (toolMeleeAttack): фразы с синими значениями в строке,
+     дополнительные модификаторы раскрываются, кнопка броска с итогом --}}
+<div class="tool-content">
+  <header class="tool-header">
+    <h2><i class="fa-solid fa-hand-fist" inert></i> {{localize "GMENTOR.MeleeAttack.title"}}</h2>
+    <span class="book-ref">B369</span>
+  </header>
+
+  {{!-- Данные оружия строкой, как obj-names-short в GMentor --}}
+  <p class="weapon-line">
+    <span class="label">Dmg</span> <span class="value">{{mode.damageText}}</span>
+    {{#if mode.minSt}}<span class="label">ST</span> <span class="value">{{mode.minSt}}</span>{{/if}}
+    {{#if mode.reach}}<span class="label">Reach</span> <span class="value">{{mode.reach}}</span>{{/if}}
+  </p>
+  <p class="line"><label><input type="checkbox" name="keepAdds"> {{localize "GMENTOR.MeleeAttack.keepAdds"}}</label>
+    <span class="note">B269</span></p>
+
+  <p class="line split">
+    <span>{{localize "GMENTOR.Attack.skill"}} <input class="inline-value big" type="number" name="skill" value="{{skill}}"></span>
+    <span>{{localize "GMENTOR.Attack.dr"}} <input class="inline-value big" type="number" name="dr" value="0" min="0"></span>
+  </p>
+  {{#if energyStep}}
+  <p class="line">{{localize "GMENTOR.Roll.Energy"}}
+    <input class="inline-value big" type="number" name="energy" value="{{energyStep}}" min="{{energyStep}}" step="{{energyStep}}"></p>
+  {{/if}}
+  <p class="line"><label><input type="checkbox" name="bareHands" {{#if bareHands}}checked{{/if}}> {{localize "GMENTOR.MeleeAttack.bareHands"}}</label></p>
+
+  <p class="line">{{localize "GMENTOR.Attack.locationLabel"}}</p>
+  <p class="line"><select class="inline-value big" name="location">
+    {{#each locations}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+  </select></p>
+  <p class="note location-hint"></p>
+
+  <p class="line">{{localize "GMENTOR.Attack.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></p>
+  <p class="line low-st"><label><input type="checkbox" name="lowStPenalty" checked>
+    {{localize "GMENTOR.Attack.lowSt"}} (<span class="low-st-value"></span>)</label></p>
+
+  <details class="more-modifiers">
+    <summary>{{localize "GMENTOR.Attack.more"}} <span class="book-ref">B547</span></summary>
+    <p class="line">{{localize "GMENTOR.MeleeAttack.evaluateLabel"}}
+      <select class="inline-value" name="evaluate">{{selectOptions evaluateChoices localize=true}}</select>
+      <span class="note">Evaluate</span></p>
+    <p class="line">{{localize "GMENTOR.MeleeAttack.poseLabel"}}
+      <select class="inline-value" name="pose">{{selectOptions poseChoices localize=true}}</select></p>
+    <p class="line"><select class="inline-value" name="targetType">{{selectOptions targetChoices localize=true}}</select>
+      <span class="note">({{localize "GMENTOR.Attack.see"}} B380)</span></p>
+
+    {{#each allOutAttacks}}
+    <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
+    {{/each}}
+    {{#each options}}
+    <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
+    {{/each}}
+
+    <p class="line"><label><input type="checkbox" name="deceptiveOn"> {{localize "GMENTOR.MeleeAttack.deceptive"}}</label></p>
+    <p class="line indent deceptive-settings">{{localize "GMENTOR.MeleeAttack.deceptiveDefense"}}
+      −<input class="inline-value" type="number" name="deceptive" value="1" min="1">
+      {{localize "GMENTOR.MeleeAttack.deceptiveDefenseEnd"}} (<span class="deceptive-value"></span>)</p>
+
+    <p class="line"><label><input type="checkbox" name="rapidStrike"> {{localize "GMENTOR.MeleeAttack.rapidStrike"}}
+      (<span class="rapid-strike-value"></span> {{localize "GMENTOR.MeleeAttack.plusAttack"}}) <span class="note">Rapid Strike</span></label></p>
+    <p class="line indent trained-by-master"><label><input type="checkbox" name="trainedByMaster">
+      {{localize "GMENTOR.MeleeAttack.trainedByMaster"}} <span class="note">TBM / Weapon Master</span></label></p>
+
+    {{#each laterOptions}}
+    <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
+    {{/each}}
+    <p class="line"><label><input type="checkbox" name="shieldOn"> {{localize "GMENTOR.MeleeAttack.shield"}}</label>
+      <span class="shield-settings">DB <input class="inline-value" type="number" name="shieldDb" value="1" min="0"></span></p>
+    <p class="line"><label><input type="checkbox" name="weaponMasterOn"> {{localize "GMENTOR.Attack.weaponMaster"}}</label>
+      <span class="weapon-master-level"><select class="inline-value" name="weaponMaster">
+        <option value="1">{{localize "GMENTOR.Attack.weaponMaster1"}}</option>
+        <option value="2">{{localize "GMENTOR.Attack.weaponMaster2"}}</option>
+      </select></span></p>
+
+    <p class="line gap">{{localize "GMENTOR.Attack.visibility"}}
+      <select class="inline-value" name="visibility">{{selectOptions visibilityChoices localize=true}}</select></p>
+    {{#each unseenOptions}}
+    <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
+    {{/each}}
+
+    {{#each mountOptions}}
+    <p class="line {{#if @first}}gap{{/if}}"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
+    {{/each}}
+  </details>
+
+  {{!-- Урона по обстоятельствам в окне GMentor нет: он виден только в броске --}}
+  <p class="line damage-preview">{{localize "GMENTOR.MeleeAttack.damage"}} <span class="value" data-preview="damage"></span>
+    <span class="note" data-preview="attacks"></span></p>
+  <div class="effective-roll">
+    <span>{{localize "GMENTOR.SpellCast.effective"}}</span>
+    <button type="submit" class="skill-roll"><i class="fa-solid fa-dice" inert></i> <span data-preview="target"></span></button>
+  </div>
+</div>

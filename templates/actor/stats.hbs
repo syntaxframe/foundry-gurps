@@ -163,7 +163,7 @@
   <td class="name">{{item.name}}{{#if item.system.modifierLabels.length}} <span class="weapon-labels">{{#each item.system.modifierLabels}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</span>{{/if}}</td>
   <td>{{mode.usage}}</td>
   <td data-tooltip-text="{{levelHint}}">
-    {{#if (ne mode.level null)}}<a class="rollable" data-action="{{#if (eq mode.type "ranged")}}rangedAttack{{else}}roll{{/if}}"
+    {{#if (ne mode.level null)}}<a class="rollable" data-action="{{#if (eq mode.type "ranged")}}rangedAttack{{else}}meleeAttack{{/if}}"
       data-label="{{item.name}}" data-value="{{mode.level}}" data-mode="{{index}}">{{mode.level}}</a>{{else}}—{{/if}}
   </td>
   <td>
