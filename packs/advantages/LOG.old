@@ -1,5 +1,3 @@
-2026/10/20-15:03:49.053857 7992523fc640 Log #10: 0 ops saved to Table #11 OK
-2026/10/20-15:03:49.053896 7992523fc640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages/000010.log: OK
-2026/10/20-15:03:49.058877 7992523fc640 Table #5: 669 entries OK
-2026/10/20-15:03:49.058958 7992523fc640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages/MANIFEST-000009: OK
-2026/10/20-15:03:49.061280 7992523fc640 **** Repaired leveldb /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages; recovered 1 files; 1310359 bytes. Some data may have been lost. ****
+2026/10/20-17:00:25.157979 74a8393fd640 Table #5: 669 entries OK
+2026/10/20-17:00:25.158162 74a8393fd640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages/MANIFEST-000001: OK
+2026/10/20-17:00:25.160923 74a8393fd640 **** Repaired leveldb /home/cat/foundry/test-data/Data/systems/gmentor/packs/advantages; recovered 1 files; 1310359 bytes. Some data may have been lost. ****

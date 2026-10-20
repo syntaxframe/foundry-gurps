@@ -197,8 +197,8 @@ const prerequisites = () => new ArrayField(new TypedSchemaField({
 export class SpellData extends LearnedData {
   static defineSchema() {
     const schema = super.defineSchema();
-    // Заклинания бывают только трудными или очень трудными (B235)
-    schema.difficulty = choice(["H", "VH"], "H");
+    // По Основам заклинания трудные или очень трудные (B235), но в сеттингах бывают и средние (Shadowrun, IQ/A)
+    schema.difficulty = choice(Object.keys(rules.DIFFICULTY), "H");
     return {
       ...schema,
       college: text(),

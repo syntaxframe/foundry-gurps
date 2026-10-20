@@ -1153,6 +1153,25 @@
       "locations": "Hit locations (B554)",
       "stall": "Stall speed of aircraft",
       "draft": "Ship draft, feet"
+    },
+    "Import": {
+      "title": "Import from GCS",
+      "confirm": "The character will be replaced with the contents of {file}: all traits, skills, spells and equipment on the sheet are deleted. Continue?",
+      "notGcs": "This is not a GCS character file",
+      "done": "Character imported.",
+      "skipped": "Not imported:",
+      "notInLibrary": "not in the library ({type}): no identifier or description",
+      "libraryTitle": "Import GCS Library",
+      "libraryCreate": "A world compendium «{label}» will be created with the items from the file. Continue?",
+      "libraryReplace": "The world compendium «{label}» already exists: it will be deleted and recreated from the file. Items already added to characters are not changed. Continue?",
+      "libraryWorking": "Importing the library… Large libraries hold thousands of items, this takes a while.",
+      "libraryDone": "Library imported.",
+      "folder": {
+        "advantage": "Traits",
+        "skill": "Skills",
+        "spell": "Spells",
+        "equipment": "Equipment"
+      }
     }
   }
 }

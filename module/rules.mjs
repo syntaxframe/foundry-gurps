@@ -440,6 +440,14 @@ export function weaponDefense(text, level) {
   return { value: Math.floor(level / 2) + 3 + Number(match[1]), note: match[2].trim() };
 }
 
+// Способ атаки (usage в библиотеках GMentor и GCS) по-русски; незнакомые остаются как есть.
+// Jet, Gaze, Breath, Area — у заклинаний
+export const WEAPON_USAGES = {
+  Swung: "Замах", Thrust: "Укол", "Shield Bash": "Удар щитом", Punch: "Удар", Thrown: "Бросок",
+  Fragmentation: "Осколки", Concussion: "Контузия", Stun: "Оглушение",
+  Jet: "Струя", Gaze: "Взгляд", Breath: "Дыхание", Area: "Область", Grapple: "Захват"
+};
+
 /* -------------------------------------------- */
 /*  Сотворение заклинаний                       */
 /* -------------------------------------------- */

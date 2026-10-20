@@ -1,6 +1,7 @@
 import { CONDITIONS, CONDITION_GROUPS, conditionDescription } from "../conditions.mjs";
 import { PROFILE_FIELDS, SENSES } from "../data/character.mjs";
 import { VEHICLE_FIELDS } from "../data/items.mjs";
+import { importCharacterFromFile } from "../gcs-import.mjs";
 import { toIdentifier } from "../rules.mjs";
 import ItemPicker from "./item-picker.mjs";
 import MeleeAttackDialog from "./melee-attack.mjs";
@@ -75,7 +76,8 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       toggleDescriptions: CharacterSheet.#onToggleDescriptions,
       addCondition: CharacterSheet.#onAddCondition,
       removeCondition: CharacterSheet.#onRemoveCondition,
-      toggleConditionDescription: CharacterSheet.#onToggleConditionDescription
+      toggleConditionDescription: CharacterSheet.#onToggleConditionDescription,
+      importGcs: CharacterSheet.#onImportGcs
     }
   };
 
@@ -108,6 +110,15 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     options.position.width = width ?? Math.min(1200, window.innerWidth - 100);
     options.position.height = height ?? Math.min(1000, window.innerHeight - 60);
     return options;
+  }
+
+  /** Пункт меню заголовка «Импорт из GCS». @inheritDoc */
+  _getHeaderControls() {
+    const controls = super._getHeaderControls();
+    if ( this.isEditable ) {
+      controls.push({ action: "importGcs", icon: "fa-solid fa-file-import", label: "GMENTOR.Import.title" });
+    }
+    return controls;
   }
 
   /** @inheritDoc */
@@ -623,6 +634,11 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
   static #onRollDamage(event, target) {
     const { label, damage } = target.dataset;
     return this.actor.rollDamage(label, damage);
+  }
+
+  /** Импорт персонажа из файла GCS (.gcs): все предметы листа заменяются содержимым файла. */
+  static #onImportGcs() {
+    return importCharacterFromFile(this.actor);
   }
 
   /** Кнопка «+» списка: выбор из библиотеки, если она есть для этого типа, иначе пустой предмет. */

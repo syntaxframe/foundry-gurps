@@ -1,6 +1,7 @@
 import GMentorTokenRuler from "./module/canvas/token-ruler.mjs";
 import { onRenderChatMessage } from "./module/chat.mjs";
 import { registerConditions } from "./module/conditions.mjs";
+import { importLibraryFromFile } from "./module/gcs-import.mjs";
 import CharacterData from "./module/data/character.mjs";
 import { AdvantageData, EquipmentData, SkillData, SpellData } from "./module/data/items.mjs";
 import GMentorActor from "./module/documents/actor.mjs";
@@ -50,3 +51,14 @@ Hooks.once("init", () => {
 
 // Кнопка «Списать энергию» в сообщении о сотворении заклинания
 Hooks.on("renderChatMessageHTML", onRenderChatMessage);
+
+// Кнопка «Импорт библиотеки GCS» на вкладке компендиумов: создавать компендиумы мира может только ведущий
+Hooks.on("renderCompendiumDirectory", (directory, html) => {
+  if ( !game.user.isGM || html.querySelector(".gmentor-import-library") ) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "gmentor-import-library";
+  button.innerHTML = `<i class="fa-solid fa-file-import" inert></i><span>${game.i18n.localize("GMENTOR.Import.libraryTitle")}</span>`;
+  button.addEventListener("click", importLibraryFromFile);
+  html.querySelector(".header-actions")?.append(button);
+});
