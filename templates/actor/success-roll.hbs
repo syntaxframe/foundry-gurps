@@ -1,0 +1,22 @@
+{{!-- Окно броска как инструмент GMentor (toolSkillRoll): уровень, модификатор, потраченное время
+     и кнопка броска с итогом --}}
+<div class="tool-content">
+  <header class="tool-header">
+    <h2><i class="fa-solid fa-dice" inert></i> {{localize "GMENTOR.SuccessRoll.title" label=label}}</h2>
+    <span class="book-ref">B343</span>
+  </header>
+
+  <p class="line">{{localize "GMENTOR.SuccessRoll.level"}} <input class="inline-value big" type="number" name="level" value="{{level}}">,
+    {{localize "GMENTOR.SuccessRoll.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></p>
+  {{#if timeSpent}}
+  <p class="line">{{localize "GMENTOR.SuccessRoll.timeLabel"}}
+    <select class="inline-value" name="time">{{selectOptions timeChoices selected="0" localize=true}}</select></p>
+  {{/if}}
+
+  <div class="effective-roll">
+    <span>{{localize "GMENTOR.SpellCast.effective"}}</span>
+    <button type="submit" class="skill-roll"><i class="fa-solid fa-dice" inert></i> <span data-preview="target"></span></button>
+  </div>
+  {{!-- Результаты бросков, новый сверху (заполняет SuccessRollDialog#showResult) --}}
+  <div class="roll-results"></div>
+</div>

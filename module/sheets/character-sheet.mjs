@@ -6,6 +6,7 @@ import ItemPicker from "./item-picker.mjs";
 import MeleeAttackDialog from "./melee-attack.mjs";
 import RangedAttackDialog from "./ranged-attack.mjs";
 import SpellCastDialog from "./spell-cast.mjs";
+import SuccessRollDialog from "./success-roll.mjs";
 import { setupItemData } from "./item-setup.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -573,10 +574,15 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     return this.actor.items.get(id);
   }
 
-  /** Бросок 3d6 на успех: data-target — значение, data-label — подпись. Shift+клик спрашивает модификатор. */
+  /**
+   * Бросок 3d6 на успех: data-value — значение, data-label — подпись, data-no-time — без потраченного времени
+   * (самоконтроль, защиты). Окно броска, как в GMentor; с Shift — простой бросок без окна.
+   */
   static #onRoll(event, target) {
     const { label, value } = target.dataset;
-    return this.actor.rollSuccess(label, Number(value), { askModifier: event.shiftKey });
+    if ( event.shiftKey ) return this.actor.rollSuccess(label, Number(value));
+    const timeSpent = !("noTime" in target.dataset);
+    return new SuccessRollDialog({ actor: this.actor, label, value: Number(value), timeSpent }).render({ force: true });
   }
 
   /** Уровень заклинания: окно сотворения, как в GMentor; с Shift — простой бросок без окна. */

@@ -1,3 +1,3 @@
-2026/10/20-12:11:26.679240 74e8313fe640 Table #5: 902 entries OK
-2026/10/20-12:11:26.679343 74e8313fe640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/spells/MANIFEST-000001: OK
-2026/10/20-12:11:26.681201 74e8313fe640 **** Repaired leveldb /home/cat/foundry/test-data/Data/systems/gmentor/packs/spells; recovered 1 files; 1294097 bytes. Some data may have been lost. ****
+2026/10/20-14:47:24.382637 75badeffd640 Table #5: 902 entries OK
+2026/10/20-14:47:24.382889 75badeffd640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/spells/MANIFEST-000001: OK
+2026/10/20-14:47:24.385918 75badeffd640 **** Repaired leveldb /home/cat/foundry/test-data/Data/systems/gmentor/packs/spells; recovered 1 files; 1294097 bytes. Some data may have been lost. ****

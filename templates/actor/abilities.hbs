@@ -17,7 +17,7 @@
             {{/if}}
             {{#if item.system.cr}}
             <span>{{localize "GMENTOR.SelfControlLabel"}}
-              <a class="rollable" data-action="roll" data-label="{{item.name}}" data-value="{{item.system.crTarget}}">{{item.system.cr}}</a>
+              <a class="rollable" data-action="roll" data-no-time data-label="{{item.name}}" data-value="{{item.system.crTarget}}">{{item.system.cr}}</a>
               {{#if (ne item.system.crTarget item.system.cr)}}<span class="warning">➞ {{item.system.crTarget}}</span>{{/if}}
             </span>
             {{/if}}

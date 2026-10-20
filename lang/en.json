@@ -88,6 +88,30 @@
       "WithEnergy": "{label}, energy {energy}",
       "BadDamage": "Cannot parse damage \"{damage}\""
     },
+    "SuccessRoll": {
+      "title": "{label} roll",
+      "level": "Skill level",
+      "modifier": "modifier",
+      "timeLabel": "Time spent",
+      "time": {
+        "-10": "Instant, cinematic (−10)",
+        "-9": "−90% (−9)",
+        "-8": "−80% (−8)",
+        "-7": "−70% (−7)",
+        "-6": "−60% (−6)",
+        "-5": "−50% (−5)",
+        "-4": "−40% (−4)",
+        "-3": "−30% (−3)",
+        "-2": "−20% (−2)",
+        "-1": "−10% (−1)",
+        "0": "normal",
+        "1": "×2 (+1)",
+        "2": "×4 (+2)",
+        "3": "×8 (+3)",
+        "4": "×15 (+4)",
+        "5": "×30 (+5)"
+      }
+    },
     "College": {
       "air": "Air",
       "animal": "Animal",

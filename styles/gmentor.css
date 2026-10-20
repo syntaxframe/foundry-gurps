@@ -39,6 +39,11 @@
   --gm-note-bg: #f1f1f1;
   --gm-fail-bg: rgba(255, 0, 0, 0.067);
   --gm-veil: rgba(255, 255, 255, 0.5);
+  /* Результат броска в окне броска, как gc-rolled в GMentor */
+  --gm-roll-success: #070;
+  --gm-roll-failure: #700;
+  --gm-roll-crit-success: #0f0;
+  --gm-roll-crit-failure: #f00;
 }
 
 /* Чисто белый фон: светлая тема Foundry рисует на окне текстуру, убираем её */
@@ -1443,6 +1448,62 @@
 
 .gmentor.tool-window .skill-roll i {
   font-size: 1.5rem;
+}
+
+/* Окно броска: результаты, как skill-results в GMentor — новый сверху и вздрагивает, прошлые бледнее,
+   у критических мигает рамка */
+.gmentor.success-roll .roll-result {
+  margin: 0.6rem 0;
+  padding: 0.3rem;
+  border: 2px solid var(--gm-bg);
+  border-radius: 4px;
+  color: var(--gm-bg);
+  font-size: 1rem;
+}
+
+.gmentor.success-roll .roll-result:first-child {
+  animation: gm-shake 0.25s 1;
+}
+
+.gmentor.success-roll .roll-result:nth-child(n+2):not(:hover) {
+  opacity: 0.5;
+}
+
+.gmentor.success-roll .roll-result:is(.success, .critSuccess) {
+  background: var(--gm-roll-success);
+}
+
+.gmentor.success-roll .roll-result:is(.failure, .critFailure) {
+  background: var(--gm-roll-failure);
+}
+
+.gmentor.success-roll .roll-result.critSuccess {
+  animation: gm-crit 0.6s alternate infinite ease-in-out;
+  --gm-crit-color: var(--gm-roll-crit-success);
+}
+
+.gmentor.success-roll .roll-result.critFailure {
+  animation: gm-crit 0.6s alternate infinite ease-in-out;
+  --gm-crit-color: var(--gm-roll-crit-failure);
+}
+
+.gmentor.success-roll .roll-result .dice {
+  font-size: 169%;
+  opacity: 0.8;
+  vertical-align: sub;
+}
+
+.gmentor.success-roll .roll-result .total {
+  font-size: 150%;
+}
+
+@keyframes gm-shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes gm-crit {
+  to { border-color: var(--gm-crit-color); }
 }
 
 /* Окно атаки длиннее экрана, когда раскрыты модификаторы: содержимое прокручивается, как message в GMentor */

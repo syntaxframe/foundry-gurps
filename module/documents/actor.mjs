@@ -29,14 +29,9 @@ export default class GMentorActor extends Actor {
    * @param {string} label             Что бросаем, для чата
    * @param {number} target            Эффективный навык до модификатора
    * @param {object} [options]
-   * @param {boolean} [options.askModifier]  Спросить модификатор перед броском (Shift+клик)
+   * @param {number} [options.modifier]     Модификатор из окна броска (SuccessRollDialog)
    */
-  async rollSuccess(label, target, { askModifier = false } = {}) {
-    let modifier = 0;
-    if ( askModifier ) {
-      modifier = await askForModifier(label);
-      if ( modifier === null ) return null;
-    }
+  async rollSuccess(label, target, { modifier = 0 } = {}) {
     const effective = target + modifier;
     const roll = await new Roll("3d6").evaluate();
     const { outcome, margin } = successOutcome(roll.total, effective);
@@ -326,15 +321,4 @@ async function askForEnergy(label, step) {
     ok: { label: "GMENTOR.Roll.Roll", icon: "fa-solid fa-dice" }
   });
   return result ? Math.max(Number(result.energy) || step, step) : null;
-}
-
-/** Диалог с полем модификатора. Возвращает число или null, если окно закрыли. */
-async function askForModifier(label) {
-  const result = await foundry.applications.api.DialogV2.input({
-    window: { title: label },
-    content: `<div class="form-group"><label>${game.i18n.localize("GMENTOR.Roll.Modifier")}</label>
-      <input type="number" name="modifier" value="0" step="1" autofocus></div>`,
-    ok: { label: "GMENTOR.Roll.Roll", icon: "fa-solid fa-dice" }
-  });
-  return result ? Number(result.modifier) || 0 : null;
 }
