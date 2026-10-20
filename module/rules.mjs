@@ -111,6 +111,19 @@ export function encumbranceLevel(weight, lift) {
   return level === -1 ? 5 : level;
 }
 
+/**
+ * Сколько можно пройти за ход при текущем Движении: шаг (1/10 Движения, не меньше ярда; B368), полное
+ * Движение и рывок (+20% Движения, не меньше +1, после хода бега по прямой; B354).
+ */
+export function movementBands(move) {
+  if ( !(move > 0) ) return { step: 0, move: 0, sprint: 0 };
+  return {
+    step: Math.max(1, Math.floor(move / 10)),
+    move,
+    sprint: move + Math.max(1, Math.floor(move * 0.2))
+  };
+}
+
 // Стартовое богатство по ТУ кампании (B27), как getStartingWealth в GMentor; от ТУ12 — $100 000
 const STARTING_WEALTH = [250, 500, 750, 1000, 2000, 5000, 10000, 15000, 20000, 30000, 50000, 75000, 100000];
 

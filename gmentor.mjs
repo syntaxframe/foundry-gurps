@@ -1,3 +1,4 @@
+import GMentorTokenRuler from "./module/canvas/token-ruler.mjs";
 import { onRenderChatMessage } from "./module/chat.mjs";
 import { registerConditions } from "./module/conditions.mjs";
 import CharacterData from "./module/data/character.mjs";
@@ -23,6 +24,9 @@ Hooks.once("init", () => {
       advantage: "gmentor.advantages", skill: "gmentor.skills", spell: "gmentor.spells", equipment: "gmentor.equipment"
     }
   };
+
+  // Линейка перемещения: цвет пути по шагу, Движению и рывку
+  CONFIG.Token.rulerClass = GMentorTokenRuler;
 
   CONFIG.Actor.trackableAttributes.character = { bar: ["hp", "fp"], value: [] };
   registerConditions();
