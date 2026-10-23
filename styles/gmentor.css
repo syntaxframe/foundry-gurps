@@ -39,6 +39,7 @@
   --gm-note-bg: #f1f1f1;
   --gm-fail-bg: rgba(255, 0, 0, 0.067);
   --gm-veil: rgba(255, 255, 255, 0.5);
+  --gm-hover-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.14), 0 1px 7px 0 rgba(0, 0, 0, 0.12);
   /* Результат броска в окне броска, как gc-rolled в GMentor */
   --gm-roll-success: #070;
   --gm-roll-failure: #700;
@@ -1494,6 +1495,88 @@
 }
 
 .gmentor.success-roll .roll-result .total {
+  font-size: 150%;
+}
+
+/* Окно броска урона, как toolDiceRoll GMentor: запись урона крупно и подчёркнута, под ней круглые серые кнопки
+   изменения, «Очистить» — мелкой надписью */
+.gmentor.damage-roll .damage-value {
+  width: 100%;
+  height: auto;
+  border: none;
+  background: none;
+  color: var(--gm-accent);
+  font: inherit;
+  font-size: 4rem;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: underline;
+  text-decoration-color: var(--gm-underline);
+  box-shadow: none;
+}
+
+.gmentor.damage-roll .damage-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.gmentor.damage-roll .damage-buttons button,
+.gmentor.damage-roll .clear-results {
+  flex: 0 0 auto;
+  width: auto;
+  border: none;
+  background: none;
+  color: var(--gm-dim);
+  font-family: var(--gm-font);
+  box-shadow: none;
+}
+
+.gmentor.damage-roll .damage-buttons button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.3rem;
+  border-radius: 18px;
+  font-size: 1rem;
+}
+
+.gmentor.damage-roll .damage-buttons button:hover,
+.gmentor.damage-roll .clear-results:hover {
+  box-shadow: var(--gm-hover-shadow);
+}
+
+.gmentor.damage-roll .clear-results {
+  height: auto;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gmentor.damage-roll .roll-result {
+  margin: 0.6rem 0;
+  padding: 0.3rem;
+  border-radius: 4px;
+  background: var(--gm-accent);
+  color: var(--gm-bg);
+  font-size: 1rem;
+}
+
+.gmentor.damage-roll .roll-result:first-child {
+  animation: gm-shake 0.25s 1;
+}
+
+.gmentor.damage-roll .roll-result:nth-child(n+2):not(:hover) {
+  opacity: 0.5;
+}
+
+.gmentor.damage-roll .roll-result .dice {
+  font-size: 169%;
+  opacity: 0.8;
+  vertical-align: sub;
+}
+
+.gmentor.damage-roll .roll-result .total {
   font-size: 150%;
 }
 

@@ -256,11 +256,11 @@ export function successOutcome(total, target) {
 }
 
 /**
- * Превращает запись урона GURPS в формулу Foundry: "sw+2 cut" → {formula: "2d6+1", type: "cut"}.
+ * Превращает запись урона GURPS в формулу Foundry: "sw+2 cut" → {formula: "2d6+1", type: "cut"}, "2d8+1" → "2d8+1".
  * thr/sw подставляются из переданных значений персонажа.
  */
 export function parseDamage(text, { thr, sw }) {
-  const match = String(text).trim().match(/^(thr|sw|\d+d)\s*([+-]\s*\d+)?\s*(.*)$/i);
+  const match = String(text).trim().match(/^(thr|sw|\d+d\d*)\s*([+-]\s*\d+)?\s*(.*)$/i);
   if ( !match ) return null;
   let [, base, add, type] = match;
   base = base.toLowerCase();
@@ -270,8 +270,8 @@ export function parseDamage(text, { thr, sw }) {
     add = Number(mod || 0) + Number((add ?? "0").replace(/\s/g, ""));
   }
   else add = Number((add ?? "0").replace(/\s/g, ""));
-  const dice = parseInt(base);
-  const formula = `${dice}d6${add > 0 ? `+${add}` : add < 0 ? add : ""}`;
+  const [dice, sides] = base.split("d");
+  const formula = `${dice}d${sides || 6}${add > 0 ? `+${add}` : add < 0 ? add : ""}`;
   return { formula, type: type.trim() };
 }
 
@@ -845,7 +845,28 @@ export function damageRecordText({ dice, sides, adds, multiplier, divisor, type,
   let text = `${dice}d${sides === 6 ? "" : sides}${adds ? signed(adds) : ""}`;
   if ( multiplier !== 1 ) text += `x${round2(multiplier)}`;
   if ( divisor !== 1 ) text += `(${round2(divisor)})`;
-  return [text, type, tail].filter(Boolean).join(" ");
+  // Урон за энергию пишется слитно: "1d burn/point"
+  const description = [type, tail].filter(Boolean).join(" ").replace(/\s+\//, "/");
+  return [text, description].filter(Boolean).join(" ");
+}
+
+// Размеры кубиков по кругу, как кнопка «dice» в toolDiceRoll GMentor
+const DIE_SIZES = [4, 6, 8, 10, 12, 20, 100];
+
+/**
+ * Урон, изменённый кнопками окна броска (toolDiceRoll GMentor): кубики, прибавка и размер кубика меняются
+ * у первой части с кубиками, прибавка в кубики не переводится. Кубиков не меньше одного.
+ * modifyDamage("1d+2 cut", {dice: 1}) → "2d+2 cut", modifyDamage("2d", {nextSize: true}) → "2d8".
+ */
+export function modifyDamage(text, { dice = 0, adds = 0, nextSize = false } = {}) {
+  text = String(text).trim();
+  const part = damageParts(text).find(damageRecord);
+  if ( !part ) return text;
+  const record = damageRecord(part);
+  record.dice = Math.max(record.dice + dice, 1);
+  record.adds += adds;
+  if ( nextSize ) record.sides = DIE_SIZES[(DIE_SIZES.indexOf(record.sides) + 1) % DIE_SIZES.length];
+  return text.replace(part, damageRecordText(record));
 }
 
 /**

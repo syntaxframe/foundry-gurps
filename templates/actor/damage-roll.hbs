@@ -1,0 +1,25 @@
+{{!-- Окно броска урона как инструмент GMentor (toolDiceRoll): запись урона, кнопки изменения и бросок --}}
+<div class="tool-content">
+  <header class="tool-header">
+    <h2><i class="fa-solid fa-dice" inert></i> {{localize "GMENTOR.DamageRoll.title"}}</h2>
+  </header>
+
+  <input class="damage-value" type="text" name="damage" value="{{damage}}" spellcheck="false" autocomplete="off">
+  <div class="damage-buttons">
+    <button type="button" data-action="modifyDamage" data-dice="-1">−1d</button>
+    <button type="button" data-action="modifyDamage" data-dice="1">+1d</button>
+    <button type="button" data-action="modifyDamage" data-next-size
+      data-tooltip="GMENTOR.DamageRoll.dieSizeHint">{{localize "GMENTOR.DamageRoll.dieSize"}}</button>
+    <button type="button" data-action="modifyDamage" data-adds="-1">−1</button>
+    <button type="button" data-action="modifyDamage" data-adds="1">+1</button>
+  </div>
+  <p class="line" data-energy hidden>{{localize "GMENTOR.Roll.Energy"}}
+    <input class="inline-value big" type="number" name="energy" value="1" min="1"></p>
+
+  <div class="effective-roll">
+    <button type="submit" class="skill-roll"><i class="fa-solid fa-dice" inert></i> {{localize "GMENTOR.Roll.Roll"}}</button>
+    <button type="button" class="clear-results" data-action="clearResults">{{localize "GMENTOR.DamageRoll.clear"}}</button>
+  </div>
+  {{!-- Результаты бросков, новый сверху (заполняет DamageRollDialog#showResult) --}}
+  <div class="roll-results"></div>
+</div>

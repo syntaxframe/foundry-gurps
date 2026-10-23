@@ -274,13 +274,18 @@ export default class GMentorActor extends Actor {
   /**
    * Бросок урона по записи GURPS ("sw+2 cut", "2d-1 imp"). Составной урон заклинаний ("thr-1 cr +1d burn/point")
    * бросается по частям одним сообщением, части без броска ("Paralysis") идут текстом. Урон за энергию
-   * ("1d burn/point") зависит от того, сколько энергии вложено, — спрашиваем перед броском.
+   * ("1d burn/point") зависит от того, сколько энергии вложено, — спрашиваем перед броском, если не передали.
+   * Итог по частям — во флаге сообщения gmentor.damage: [{total, type}] у брошенных, [{text}] у остальных.
+   * @param {string} label
+   * @param {string} damage
+   * @param {object} [options]
+   * @param {number} [options.energy]  Вложенная энергия для урона за энергию
    */
-  async rollDamage(label, damage) {
+  async rollDamage(label, damage, { energy } = {}) {
     let parts = damageParts(damage);
     const step = parts.map(energyStep).find(Boolean);
     if ( step ) {
-      const energy = await askForEnergy(label, step);
+      energy ??= await askForEnergy(label, step);
       if ( energy === null ) return null;
       parts = parts.map(part => energyDamage(part, energy));
       label = game.i18n.format("GMENTOR.Roll.WithEnergy", { label, energy });
@@ -290,24 +295,26 @@ export default class GMentorActor extends Actor {
     for ( const part of parts ) {
       const parsed = parseDamage(part, this.system.damage);
       if ( !parsed ) {
-        results.push(part);
+        results.push({ text: part });
         continue;
       }
       const roll = await new Roll(parsed.formula).evaluate();
       // Урон не может быть меньше 1, у дробящего — меньше 0 (B378). Перед типом бывает делитель брони: "(2) cr"
       const minimum = /\bcr\b/.test(parsed.type) ? 0 : 1;
-      results.push(`<strong>${Math.max(roll.total, minimum)}</strong> ${parsed.type}`.trim());
+      results.push({ total: Math.max(roll.total, minimum), type: parsed.type });
       rolls.push(roll);
     }
     if ( !rolls.length ) {
       ui.notifications.warn(game.i18n.format("GMENTOR.Roll.BadDamage", { damage }));
       return null;
     }
-    const flavor = `<h3>${label}</h3><p>${game.i18n.localize("GMENTOR.Roll.Damage")}: ${results.join(" + ")}</p>`;
+    const resultText = results.map(({ text, total, type }) => text ?? `<strong>${total}</strong> ${type}`.trim());
+    const flavor = `<h3>${label}</h3><p>${game.i18n.localize("GMENTOR.Roll.Damage")}: ${resultText.join(" + ")}</p>`;
     // toMessage оставляет в сообщении только свой бросок: готовим данные (режим сообщения, звук) и кладём все
     const messageData = await rolls[0].toMessage({ speaker: ChatMessage.getSpeaker({ actor: this }), flavor },
       { create: false });
     messageData.rolls = rolls;
+    foundry.utils.setProperty(messageData, "flags.gmentor.damage", results);
     return ChatMessage.implementation.create(messageData);
   }
 }

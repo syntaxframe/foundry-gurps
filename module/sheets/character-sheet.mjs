@@ -7,6 +7,7 @@ import ItemPicker from "./item-picker.mjs";
 import MeleeAttackDialog from "./melee-attack.mjs";
 import RangedAttackDialog from "./ranged-attack.mjs";
 import SpellCastDialog from "./spell-cast.mjs";
+import DamageRollDialog from "./damage-roll.mjs";
 import SuccessRollDialog from "./success-roll.mjs";
 import { setupItemData } from "./item-setup.mjs";
 
@@ -637,7 +638,8 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   static #onRollDamage(event, target) {
     const { label, damage } = target.dataset;
-    return this.actor.rollDamage(label, damage);
+    if ( event.shiftKey ) return this.actor.rollDamage(label, damage);
+    return new DamageRollDialog({ actor: this.actor, label, damage }).render({ force: true });
   }
 
   /** Импорт персонажа из файла GCS (.gcs): все предметы листа заменяются содержимым файла. */
