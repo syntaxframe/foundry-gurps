@@ -59,20 +59,21 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
     const drBonuses = this.#applyFeatures();
     const b = this.bonuses;
     const sm = this.sm + b.sm;
-    const sizeModifier = rules.sizeCostModifier(sm);
+    const sizeReduction = rules.sizeCostReduction(sm);
     const cost = { attributes: 0 };
 
-    // Основные атрибуты
+    // Основные атрибуты; скидка за SM — только у ST
     for ( const [key, attr] of Object.entries(this.attributes) ) {
       attr.total = attr.value + b[key];
-      attr.cost = rules.attributeCost(key, attr.value, key === "st" ? sizeModifier : 1);
+      const reduction = this.costReductions[key] + ((key === "st") ? sizeReduction : 0);
+      attr.cost = rules.attributeCost(key, attr.value, rules.attributeCostModifier(reduction));
       cost.attributes += attr.cost;
     }
     const { st, dx, iq, ht } = this.attributes;
 
     // Вторичные характеристики (B15–B17)
     this.hp.max = st.total + this.hp.mod + b.hp;
-    this.hp.cost = Math.round(this.hp.mod * 2 * sizeModifier);
+    this.hp.cost = Math.round(this.hp.mod * 2 * rules.attributeCostModifier(sizeReduction));
     this.fp.max = ht.total + this.fp.mod + b.fp;
     this.fp.cost = this.fp.mod * 3;
     this.will.value = iq.total + this.will.mod + b.will;
@@ -127,12 +128,15 @@ export default class CharacterData extends foundry.abstract.TypeDataModel {
     // Все модификаторы реакции с источником, как reaction-text в GMentor; условные в итог не входят
     this.reactions = [];
     this.wealthMultiplier = 1;
+    // Скидки на цену атрибутов в процентах (cost_reduction)
+    this.costReductions = Object.fromEntries(rules.COST_REDUCTION_ATTRIBUTES.map(key => [key, 0]));
     const drBonuses = [];
     for ( const item of this.#featureSources ) {
       for ( const feature of item.system.activeFeatures ) {
         if ( feature.type === "attribute" ) this.bonuses[feature.target] += feature.value;
         else if ( feature.type === "dr" ) drBonuses.push(feature);
         else if ( feature.type === "wealth" ) this.wealthMultiplier *= feature.value;
+        else if ( feature.type === "costReduction" ) this.costReductions[feature.attribute] += feature.value;
         else if ( feature.type === "reaction" ) {
           if ( !feature.situation ) this.bonuses.reaction += feature.value;
           this.reactions.push({ source: item.name, value: feature.value, situation: feature.situation });

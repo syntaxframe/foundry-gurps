@@ -703,7 +703,8 @@
       "skill": "Умение",
       "spell": "Заклинания",
       "dr": "СП",
-      "wealth": "Богатство"
+      "wealth": "Богатство",
+      "costReduction": "Скидка на цену"
     },
     "Compare": {
       "is": "равно",
@@ -1098,6 +1099,7 @@
     "WeakHint": "Не хватает СЛ для этого оружия (B270)",
     "EquipmentFeaturesHint": "Что предмет даёт персонажу. Эффекты действуют, только пока предмет надет",
     "DRShort": "СП",
+    "CostReductionEffect": "Цена {attribute} {value}%",
     "DRByType": "СП против этого типа урона",
     "DamageTypePlaceholder": "любой урон",
     "DamageTypeHint": "Тип урона, против которого действует СП (pi, cr, cut). Пусто — против любого",

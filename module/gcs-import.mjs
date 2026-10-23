@@ -6,7 +6,7 @@
  * поэтому identifier, описание и данные, которых в файле нет (школа и требования заклинания, защита умения),
  * берутся из записи библиотеки с тем же русским названием.
  */
-import { COMPARE, DIFFICULTY, DR_LOCATIONS, toIdentifier, WEAPON_USAGES } from "./rules.mjs";
+import { COMPARE, COST_REDUCTION_ATTRIBUTES, DIFFICULTY, DR_LOCATIONS, toIdentifier, WEAPON_USAGES } from "./rules.mjs";
 
 /** Атрибуты GCS → вводимые поля персонажа: основные — купленный уровень, вторичные — отклонение от базы. */
 const SECONDARY_ATTRIBUTES = { will: "will", per: "per", hp: "hp", fp: "fp", basic_speed: "speed", basic_move: "move" };
@@ -349,6 +349,9 @@ function convertFeatures(features = [], replacements, skipped) {
       }
       case "dr_bonus":
         return drFeatures(feature, scaled, skipped);
+      case "cost_reduction":
+        if ( !COST_REDUCTION_ATTRIBUTES.includes(feature.attribute) ) break;
+        return [{ type: "costReduction", attribute: feature.attribute, amount: Number(feature.percentage) || 0, perLevel: false }];
     }
     skipped.add(`эффект ${feature.type}${feature.selection_type ? ` (${feature.selection_type})` : ""}`);
     return [];

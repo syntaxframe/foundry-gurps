@@ -136,6 +136,9 @@ export function startingWealth(tl, multiplier = 1) {
 // Цена уровня атрибута (B14)
 export const ATTRIBUTE_COST = { st: 10, dx: 20, iq: 20, ht: 10 };
 
+// Атрибуты, цену которых снижают черты (cost_reduction)
+export const COST_REDUCTION_ATTRIBUTES = Object.keys(ATTRIBUTE_COST);
+
 /**
  * Стоимость атрибута. Скидка (например, за SM для ST) действует только на уровни выше 10, как в GMentor.
  * @param {number} costModifier  Множитель стоимости, не меньше 0.2
@@ -145,10 +148,17 @@ export function attributeCost(key, value, costModifier = 1) {
   return Math.round((value - 10) * ATTRIBUTE_COST[key] * k);
 }
 
-/** Скидка за модификатор размера на ST и HP (B15): −10% за каждый SM выше 0, не больше 8, минимум 20% цены. */
-export function sizeCostModifier(sm) {
-  const clamped = Math.min(Math.max(sm, 0), 8);
-  return Math.max(1 - 0.1 * clamped, 0.2);
+/** Скидка за модификатор размера на ST и HP (B15), в процентах: 10 за каждый SM выше 0, SM не больше 8. */
+export function sizeCostReduction(sm) {
+  return 10 * Math.min(Math.max(sm, 0), 8);
+}
+
+/**
+ * Множитель цены атрибута по сумме скидок в процентах (за SM и от черт, cost_reduction: «Нет тонких
+ * манипуляторов» −40% к ST и DX, B145). Скидки складываются, цена не меньше 20%, как в GMentor.
+ */
+export function attributeCostModifier(reduction) {
+  return Math.max(1 - reduction / 100, 0.2);
 }
 
 // Сложность умения → относительный уровень при вложении 1 очка (B170)

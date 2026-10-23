@@ -703,7 +703,8 @@
       "skill": "Skill",
       "spell": "Spells",
       "dr": "DR",
-      "wealth": "Wealth"
+      "wealth": "Wealth",
+      "costReduction": "Cost reduction"
     },
     "Compare": {
       "is": "is",
@@ -1059,6 +1060,7 @@
     "WeakHint": "Not enough ST for this weapon (B270)",
     "EquipmentFeaturesHint": "What the item gives the character. Effects work only while the item is equipped",
     "DRShort": "DR",
+    "CostReductionEffect": "{attribute} cost {value}%",
     "DRByType": "DR against this damage type",
     "DamageTypePlaceholder": "any damage",
     "DamageTypeHint": "Damage type this DR applies to (pi, cr, cut). Empty — any",

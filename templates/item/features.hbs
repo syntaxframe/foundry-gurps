@@ -15,6 +15,8 @@
         data-tooltip="GMENTOR.DamageTypeHint">
       {{else if (eq type "attribute")}}
       <select name="{{../prefix}}.{{@index}}.target">{{selectOptions @root.choices.bonusTarget selected=target localize=true}}</select>
+      {{else if (eq type "costReduction")}}
+      <select name="{{../prefix}}.{{@index}}.attribute">{{selectOptions @root.choices.costAttribute selected=attribute localize=true}}</select>
       {{else if (eq type "reaction")}}
       <input type="text" name="{{../prefix}}.{{@index}}.situation" value="{{situation}}" placeholder="{{localize "GMENTOR.SituationPlaceholder"}}">
       {{else if (eq type "skill")}}

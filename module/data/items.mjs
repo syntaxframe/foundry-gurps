@@ -45,7 +45,9 @@ const features = () => new ArrayField(new TypedSchemaField({
   },
   spell: { college: text(), collegeCompare: choice(rules.COMPARE, "is anything"), ...scaled() },
   // Множитель стартовых денег (wealth_modifier: «Богатый» ×5); perLevel — в степени уровня («Мультимиллионер»)
-  wealth: { ...scaled() }
+  wealth: { ...scaled() },
+  // Скидка на цену атрибута в процентах (cost_reduction: «Нет тонких манипуляторов» −40% к ST и DX)
+  costReduction: { attribute: choice(rules.COST_REDUCTION_ATTRIBUTES, "st"), ...scaled() }
 }));
 
 /** Преимущество, недостаток, причуда или перк. Цена считается так же, как в GMentor (advantages.js). */

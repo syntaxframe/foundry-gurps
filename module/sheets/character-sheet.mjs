@@ -307,6 +307,10 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
         const reaction = `${game.i18n.localize("GMENTOR.Reaction")} ${value}`;
         parts.push(feature.situation ? `${reaction} (${feature.situation})` : reaction);
       }
+      // Скидка показывается со знаком изменения цены: «Цена СЛ −40%»
+      else if ( feature.type === "costReduction" ) parts.push(game.i18n.format("GMENTOR.CostReductionEffect", {
+        attribute: game.i18n.localize(`GMENTOR.BonusTarget.${feature.attribute}`), value: (-feature.value).signedString()
+      }));
     }
     for ( const learned of [...this.actor.itemTypes.skill, ...this.actor.itemTypes.spell] ) {
       for ( const bonus of learned.system.traitBonuses ) {

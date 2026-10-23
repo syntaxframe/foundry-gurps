@@ -1,5 +1,5 @@
 import { VEHICLE_FIELDS, WEAPON_DEFAULT_TYPES } from "../data/items.mjs";
-import { BONUS_TARGETS, COMPARE, DR_LOCATIONS } from "../rules.mjs";
+import { BONUS_TARGETS, COMPARE, COST_REDUCTION_ATTRIBUTES, DR_LOCATIONS } from "../rules.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -7,7 +7,7 @@ const { ItemSheetV2 } = foundry.applications.sheets;
 const TEMPLATES = "systems/gmentor/templates/item";
 
 /** Типы эффектов черты и снаряжения (см. features в items.mjs). Поля нового эффекта заполняет схема. */
-const FEATURE_TYPES = ["attribute", "dr", "reaction", "skill", "spell", "wealth"];
+const FEATURE_TYPES = ["attribute", "dr", "reaction", "skill", "spell", "wealth", "costReduction"];
 
 /** Текстовые поля режимов оружия в порядке таблицы на листе персонажа (см. weaponMode в items.mjs). */
 const WEAPON_FIELDS = {
@@ -92,6 +92,7 @@ export default class GMentorItemSheet extends HandlebarsApplicationMixin(ItemShe
           multiplier: "GMENTOR.CostType.multiplier" },
         affects: { total: "GMENTOR.Affects.total", base: "GMENTOR.Affects.base", levels: "GMENTOR.Affects.levels" },
         bonusTarget: Object.fromEntries(BONUS_TARGETS.map(key => [key, `GMENTOR.BonusTarget.${key}`])),
+        costAttribute: Object.fromEntries(COST_REDUCTION_ATTRIBUTES.map(key => [key, `GMENTOR.BonusTarget.${key}`])),
         compare: Object.fromEntries(COMPARE.map(key => [key, `GMENTOR.Compare.${key.replaceAll(" ", "-")}`])),
         drLocation: Object.fromEntries(DR_LOCATIONS.map(key => [key, `GMENTOR.Location.${key}`])),
         defaultType: Object.fromEntries(WEAPON_DEFAULT_TYPES.map(key =>
