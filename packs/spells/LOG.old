@@ -1,3 +1,1 @@
-2026/10/20-17:00:25.174902 74a838bfc640 Table #5: 902 entries OK
-2026/10/20-17:00:25.175034 74a838bfc640 Archiving /home/cat/foundry/test-data/Data/systems/gmentor/packs/spells/MANIFEST-000001: OK
-2026/10/20-17:00:25.177572 74a838bfc640 **** Repaired leveldb /home/cat/foundry/test-data/Data/systems/gmentor/packs/spells; recovered 1 files; 1294097 bytes. Some data may have been lost. ****
+2026/10/24-01:54:11.128101 7bce150e5640 Delete type=3 #1
