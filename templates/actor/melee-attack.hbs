@@ -6,42 +6,42 @@
     <span class="book-ref">B369</span>
   </header>
 
-  {{!-- Данные оружия строкой, как obj-names-short в GMentor --}}
+  {{!-- Данные оружия строкой, как obj-names-short в GMentor; урон и ST правятся --}}
   <p class="weapon-line">
-    <span class="label">Dmg</span> <span class="value">{{mode.damageText}}</span>
-    {{#if mode.minSt}}<span class="label">ST</span> <span class="value">{{mode.minSt}}</span>{{/if}}
+    <label class="field"><span class="label">Dmg</span> <input class="inline-value" type="text" name="damageText" value="{{mode.damageText}}"></label>
+    <label class="field"><span class="label">ST</span> <input class="inline-value" type="text" name="minSt" value="{{minSt}}"></label>
     {{#if mode.reach}}<span class="label">Reach</span> <span class="value">{{mode.reach}}</span>{{/if}}
   </p>
   <p class="line"><label><input type="checkbox" name="keepAdds"> {{localize "GMENTOR.MeleeAttack.keepAdds"}}</label>
     <span class="note">B269</span></p>
 
   <p class="line split">
-    <span>{{localize "GMENTOR.Attack.skill"}} <input class="inline-value big" type="number" name="skill" value="{{skill}}"></span>
-    <span>{{localize "GMENTOR.Attack.dr"}} <input class="inline-value big" type="number" name="dr" value="0" min="0"></span>
+    <label class="field">{{localize "GMENTOR.Attack.skill"}} <input class="inline-value big" type="number" name="skill" value="{{skill}}"></label>
+    <label class="field">{{localize "GMENTOR.Attack.dr"}} <input class="inline-value big" type="number" name="dr" value="0" min="0"></label>
   </p>
   {{#if energyStep}}
-  <p class="line">{{localize "GMENTOR.Roll.Energy"}}
-    <input class="inline-value big" type="number" name="energy" value="{{energyStep}}" min="{{energyStep}}" step="{{energyStep}}"></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Roll.Energy"}}
+    <input class="inline-value big" type="number" name="energy" value="{{energyStep}}" min="{{energyStep}}" step="{{energyStep}}"></label></p>
   {{/if}}
   <p class="line"><label><input type="checkbox" name="bareHands" {{#if bareHands}}checked{{/if}}> {{localize "GMENTOR.MeleeAttack.bareHands"}}</label></p>
 
-  <p class="line">{{localize "GMENTOR.Attack.locationLabel"}}</p>
-  <p class="line"><select class="inline-value big" name="location">
+  <p class="line"><label class="field" for="{{rootId}}-location">{{localize "GMENTOR.Attack.locationLabel"}}</label></p>
+  <p class="line"><select class="inline-value big" name="location" id="{{rootId}}-location">
     {{#each locations}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
   </select></p>
   <p class="note location-hint"></p>
 
-  <p class="line">{{localize "GMENTOR.Attack.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Attack.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></label></p>
   <p class="line low-st"><label><input type="checkbox" name="lowStPenalty" checked>
     {{localize "GMENTOR.Attack.lowSt"}} (<span class="low-st-value"></span>)</label></p>
 
   <details class="more-modifiers">
     <summary>{{localize "GMENTOR.Attack.more"}} <span class="book-ref">B547</span></summary>
-    <p class="line">{{localize "GMENTOR.MeleeAttack.evaluateLabel"}}
-      <select class="inline-value" name="evaluate">{{selectOptions evaluateChoices localize=true}}</select>
+    <p class="line"><label class="field">{{localize "GMENTOR.MeleeAttack.evaluateLabel"}}
+      <select class="inline-value" name="evaluate">{{selectOptions evaluateChoices localize=true}}</select></label>
       <span class="note">Evaluate</span></p>
-    <p class="line">{{localize "GMENTOR.MeleeAttack.poseLabel"}}
-      <select class="inline-value" name="pose">{{selectOptions poseChoices localize=true}}</select></p>
+    <p class="line"><label class="field">{{localize "GMENTOR.MeleeAttack.poseLabel"}}
+      <select class="inline-value" name="pose">{{selectOptions poseChoices localize=true}}</select></label></p>
     <p class="line"><select class="inline-value" name="targetType">{{selectOptions targetChoices localize=true}}</select>
       <span class="note">({{localize "GMENTOR.Attack.see"}} B380)</span></p>
 
@@ -53,9 +53,9 @@
     {{/each}}
 
     <p class="line"><label><input type="checkbox" name="deceptiveOn"> {{localize "GMENTOR.MeleeAttack.deceptive"}}</label></p>
-    <p class="line indent deceptive-settings">{{localize "GMENTOR.MeleeAttack.deceptiveDefense"}}
+    <p class="line indent deceptive-settings"><label class="field">{{localize "GMENTOR.MeleeAttack.deceptiveDefense"}}
       −<input class="inline-value" type="number" name="deceptive" value="1" min="1">
-      {{localize "GMENTOR.MeleeAttack.deceptiveDefenseEnd"}} (<span class="deceptive-value"></span>)</p>
+      {{localize "GMENTOR.MeleeAttack.deceptiveDefenseEnd"}}</label> (<span class="deceptive-value"></span>)</p>
 
     <p class="line"><label><input type="checkbox" name="rapidStrike"> {{localize "GMENTOR.MeleeAttack.rapidStrike"}}
       (<span class="rapid-strike-value"></span> {{localize "GMENTOR.MeleeAttack.plusAttack"}}) <span class="note">Rapid Strike</span></label></p>
@@ -66,15 +66,15 @@
     <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
     {{/each}}
     <p class="line"><label><input type="checkbox" name="shieldOn"> {{localize "GMENTOR.MeleeAttack.shield"}}</label>
-      <span class="shield-settings">DB <input class="inline-value" type="number" name="shieldDb" value="1" min="0"></span></p>
+      <span class="shield-settings"><label class="field">DB <input class="inline-value" type="number" name="shieldDb" value="1" min="0"></label></span></p>
     <p class="line"><label><input type="checkbox" name="weaponMasterOn"> {{localize "GMENTOR.Attack.weaponMaster"}}</label>
       <span class="weapon-master-level"><select class="inline-value" name="weaponMaster">
         <option value="1">{{localize "GMENTOR.Attack.weaponMaster1"}}</option>
         <option value="2">{{localize "GMENTOR.Attack.weaponMaster2"}}</option>
       </select></span></p>
 
-    <p class="line gap">{{localize "GMENTOR.Attack.visibility"}}
-      <select class="inline-value" name="visibility">{{selectOptions visibilityChoices localize=true}}</select></p>
+    <p class="line gap"><label class="field">{{localize "GMENTOR.Attack.visibility"}}
+      <select class="inline-value" name="visibility">{{selectOptions visibilityChoices localize=true}}</select></label></p>
     {{#each unseenOptions}}
     <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.MeleeAttack.option." this)}}</label></p>
     {{/each}}

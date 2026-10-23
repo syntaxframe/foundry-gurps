@@ -1637,6 +1637,16 @@
   margin: 0 5px 0 -20px;
 }
 
+/* Подпись поля: клик по тексту рядом ставит курсор в поле */
+.gmentor.attack-window .line > label.field {
+  display: inline;
+  padding-left: 0;
+}
+
+.gmentor.attack-window label.field {
+  cursor: text;
+}
+
 .gmentor.attack-window .weapon-line {
   margin: 0.25rem 0;
   font-size: 0.9rem;
@@ -1644,6 +1654,15 @@
 
 .gmentor.attack-window .weapon-line .label {
   color: var(--gm-soft);
+}
+
+.gmentor.attack-window .weapon-line .shots {
+  white-space: nowrap;
+}
+
+.gmentor.attack-window .weapon-line .inline-value {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--gm-underline);
 }
 
 .gmentor.attack-window .value {

@@ -269,6 +269,7 @@
     "Attack": {
       "title": "Ranged Attack",
       "spendAmmo": "Spend ammo on attack ({ammo})",
+      "spendShots": "Spend ammo on attack",
       "skill": "Skill:",
       "dr": "Target DR:",
       "distance": "Distance",

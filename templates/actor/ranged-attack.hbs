@@ -6,60 +6,67 @@
     <span class="book-ref">B372</span>
   </header>
 
-  {{!-- Данные оружия строкой, как obj-names-short в GMentor --}}
+  {{!-- Данные оружия строкой, как obj-names-short в GMentor; всё правится.
+       Shots — ёмкость и патроны в магазине, как в GMentor: бросок их вычитает, новая ёмкость — перезарядка --}}
   <p class="weapon-line">
-    <span class="label">Dmg</span> <span class="value">{{mode.damageText}}</span>
-    <span class="label">ST</span> <span class="value">{{mode.minSt}}</span>
-    <span class="label">Acc</span> <span class="value">{{mode.accuracyText}}</span>
-    <span class="label">Range</span> <span class="value">{{mode.rangeText}}</span>
-    <span class="label">ROF</span> <span class="value">{{mode.rateOfFire}}</span>
-    <span class="label">Bulk</span> <span class="value">{{mode.bulk}}</span>
-    <span class="label">Rcl</span> <span class="value">{{mode.recoil}}</span>
-    <span class="label">Shots</span> <span class="value">{{mode.shots}}{{#if ammo}} · <span data-preview="ammo">{{ammo.system.quantity}}</span>{{/if}}</span>
+    <label class="field"><span class="label">Dmg</span> <input class="inline-value" type="text" name="damageText" value="{{mode.damageText}}"></label>
+    <label class="field"><span class="label">ST</span> <input class="inline-value" type="text" name="minSt" value="{{minSt}}"></label>
+    <label class="field"><span class="label">Acc</span> <input class="inline-value" type="text" name="accuracyText" value="{{mode.accuracyText}}"></label>
+    <label class="field"><span class="label">Range</span> <input class="inline-value" type="text" name="rangeText" value="{{mode.rangeText}}"></label>
+    <label class="field"><span class="label">ROF</span> <input class="inline-value" type="text" name="rateOfFire" value="{{rateOfFire}}"></label>
+    <label class="field"><span class="label">Bulk</span> <input class="inline-value" type="text" name="bulk" value="{{bulk}}"></label>
+    <label class="field"><span class="label">Rcl</span> <input class="inline-value" type="text" name="recoil" value="{{recoil}}"></label>
+    {{#if (ne shotsLeft null)}}
+    <span class="shots"><label class="field"><span class="label">Shots</span>
+      <input class="inline-value" type="text" name="magazine" value="{{mode.shots}}"></label> ·
+      <input class="inline-value" type="number" name="shotsLeft" value="{{shotsLeft}}" min="0"></span>
+    {{/if}}
   </p>
-  {{#if ammo}}
-  <p class="line"><label><input type="checkbox" name="spendAmmo" checked> {{localize "GMENTOR.Attack.spendAmmo" ammo=ammo.name}}</label></p>
+  {{#if (ne shotsLeft null)}}
+  <p class="line"><label><input type="checkbox" name="spendAmmo" checked>
+    {{#if ammo}}{{localize "GMENTOR.Attack.spendAmmo" ammo=ammo.name}}{{else}}{{localize "GMENTOR.Attack.spendShots"}}{{/if}}</label></p>
   {{/if}}
 
   <p class="line split">
-    <span>{{localize "GMENTOR.Attack.skill"}} <input class="inline-value big" type="number" name="skill" value="{{skill}}"></span>
-    <span>{{localize "GMENTOR.Attack.dr"}} <input class="inline-value big" type="number" name="dr" value="0" min="0"></span>
+    <label class="field">{{localize "GMENTOR.Attack.skill"}} <input class="inline-value big" type="number" name="skill" value="{{skill}}"></label>
+    <label class="field">{{localize "GMENTOR.Attack.dr"}} <input class="inline-value big" type="number" name="dr" value="0" min="0"></label>
   </p>
   <p class="line">
-    {{localize "GMENTOR.Attack.distance"}} <input class="inline-value big" type="number" name="distance" value="1" min="0">
-    {{localize "GMENTOR.Attack.meters"}}, {{localize "GMENTOR.Attack.speed"}}
-    <input class="inline-value" type="number" name="speed" value="0" min="0"> {{localize "GMENTOR.Attack.metersPerSecond"}}
-    (<input class="inline-value" type="number" name="speedKmh" value="0" min="0"> {{localize "GMENTOR.Attack.kmPerHour"}})
+    <label class="field">{{localize "GMENTOR.Attack.distance"}} <input class="inline-value big" type="number" name="distance" value="1" min="0">
+      {{localize "GMENTOR.Attack.meters"}}</label>,
+    <label class="field">{{localize "GMENTOR.Attack.speed"}}
+      <input class="inline-value" type="number" name="speed" value="0" min="0"> {{localize "GMENTOR.Attack.metersPerSecond"}}</label>
+    (<label class="field"><input class="inline-value" type="number" name="speedKmh" value="0" min="0"> {{localize "GMENTOR.Attack.kmPerHour"}}</label>)
   </p>
   <p class="note speed-note">{{localize "GMENTOR.Attack.speedNote"}}</p>
-  <p class="line">{{localize "GMENTOR.Attack.shots"}} <input class="inline-value big" type="number" name="shots" value="1" min="1"></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Attack.shots"}} <input class="inline-value big" type="number" name="shots" value="1" min="1"></label></p>
   {{#if energyStep}}
-  <p class="line">{{localize "GMENTOR.Roll.Energy"}}
-    <input class="inline-value big" type="number" name="energy" value="{{energyStep}}" min="{{energyStep}}" step="{{energyStep}}"></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Roll.Energy"}}
+    <input class="inline-value big" type="number" name="energy" value="{{energyStep}}" min="{{energyStep}}" step="{{energyStep}}"></label></p>
   {{/if}}
 
-  <p class="line">{{localize "GMENTOR.Attack.locationLabel"}}</p>
-  <p class="line"><select class="inline-value big" name="location">
+  <p class="line"><label class="field" for="{{rootId}}-location">{{localize "GMENTOR.Attack.locationLabel"}}</label></p>
+  <p class="line"><select class="inline-value big" name="location" id="{{rootId}}-location">
     {{#each locations}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
   </select></p>
   <p class="note location-hint"></p>
 
-  <p class="line">{{localize "GMENTOR.Attack.aim"}}
-    <select class="inline-value big" name="aimRounds">{{#each aimRounds}}<option value="{{this}}"></option>{{/each}}</select></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Attack.aim"}}
+    <select class="inline-value big" name="aimRounds">{{#each aimRounds}}<option value="{{this}}"></option>{{/each}}</select></label></p>
   <p class="line indent">
     <label><input type="checkbox" name="optics" {{#if opticsBonus}}checked{{/if}}> {{localize "GMENTOR.Attack.optics"}}</label>
-    <span class="optics-settings">+<input class="inline-value" type="number" name="opticsBonus" value="{{#if opticsBonus}}{{opticsBonus}}{{else}}1{{/if}}" min="1">
-      {{localize "GMENTOR.Attack.opticsWith"}}
+    <span class="optics-settings"><label class="field">+<input class="inline-value" type="number" name="opticsBonus" value="{{#if opticsBonus}}{{opticsBonus}}{{else}}1{{/if}}" min="1"></label>
+      <label class="field">{{localize "GMENTOR.Attack.opticsWith"}}
       <select class="inline-value" name="opticsVariable">
         <option value="1">{{localize "GMENTOR.Attack.opticsVariable"}}</option>
         <option value="0">{{localize "GMENTOR.Attack.opticsFixed"}}</option>
-      </select></span>
+      </select></label></span>
   </p>
   <p class="note warning indent optics-warning">{{localize "GMENTOR.Attack.opticsWarning"}}</p>
   <p class="line indent"><label><input type="checkbox" name="brace"> {{localize "GMENTOR.Attack.brace"}} <span class="note">Brace</span></label></p>
   <p class="note indent brace-note">{{localize "GMENTOR.Attack.braceNote"}}</p>
 
-  <p class="line">{{localize "GMENTOR.Attack.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Attack.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></label></p>
   <p class="line low-st"><label><input type="checkbox" name="lowStPenalty" checked>
     {{localize "GMENTOR.Attack.lowSt"}} (<span class="low-st-value"></span>)</label></p>
 
@@ -67,12 +74,12 @@
     <summary>{{localize "GMENTOR.Attack.more"}} <span class="book-ref">B548</span></summary>
     <p class="line">
       <select class="inline-value" name="heightFactor">{{selectOptions heightChoices localize=true}}</select>
-      <span class="height-distance">{{localize "GMENTOR.Attack.by"}} <input class="inline-value" type="number" name="height" value="1" min="0"> {{localize "GMENTOR.Attack.meters"}}</span>
+      <span class="height-distance"><label class="field">{{localize "GMENTOR.Attack.by"}} <input class="inline-value" type="number" name="height" value="1" min="0"> {{localize "GMENTOR.Attack.meters"}}</label></span>
     </p>
     <p class="line">
       <select class="inline-value" name="sizeMode">{{selectOptions sizeChoices localize=true}}</select>
-      <span class="size-meters">, <input class="inline-value" type="number" name="sizeMeters" value="1.8" min="0" step="0.1"> {{localize "GMENTOR.Attack.sizeMetersNote"}}</span>
-      <span class="size-sm">{{localize "GMENTOR.Attack.sizeSm"}} <input class="inline-value" type="number" name="sizeSm" value="0"></span>
+      <span class="size-meters">, <label class="field"><input class="inline-value" type="number" name="sizeMeters" value="1.8" min="0" step="0.1"> {{localize "GMENTOR.Attack.sizeMetersNote"}}</label></span>
+      <span class="size-sm"><label class="field">{{localize "GMENTOR.Attack.sizeSm"}} <input class="inline-value" type="number" name="sizeSm" value="0"></label></span>
     </p>
     <p class="line"><select class="inline-value" name="targetType">{{selectOptions targetChoices localize=true}}</select>
       <span class="note">({{localize "GMENTOR.Attack.see"}} B380)</span></p>
@@ -81,7 +88,7 @@
     <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.Attack.option." this)}}</label></p>
     {{/each}}
     <p class="line"><label><input type="checkbox" name="blockersOn"> {{localize "GMENTOR.Attack.blockers"}}</label>
-      <input class="inline-value" type="number" name="blockersCount" value="1" min="1"> {{localize "GMENTOR.Attack.people"}}
+      <label class="field"><input class="inline-value" type="number" name="blockersCount" value="1" min="1"> {{localize "GMENTOR.Attack.people"}}</label>
       (<span class="blockers-value"></span>)</p>
     {{#each coverOptions}}
     <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.Attack.option." this)}}</label></p>
@@ -93,8 +100,8 @@
       </select></span>
       <span class="note" data-tooltip="GMENTOR.Attack.weaponMasterHint"><i class="fa-solid fa-circle-question" inert></i></span></p>
 
-    <p class="line gap">{{localize "GMENTOR.Attack.visibility"}}
-      <select class="inline-value" name="visibility">{{selectOptions visibilityChoices localize=true}}</select></p>
+    <p class="line gap"><label class="field">{{localize "GMENTOR.Attack.visibility"}}
+      <select class="inline-value" name="visibility">{{selectOptions visibilityChoices localize=true}}</select></label></p>
     {{#each unseenOptions}}
     <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.Attack.option." this)}}</label></p>
     {{/each}}
@@ -105,7 +112,7 @@
 
     <details class="vehicle-modifiers">
       <summary>{{localize "GMENTOR.Attack.vehicle"}}</summary>
-      <p class="line">{{localize "GMENTOR.Attack.controlFailure"}} <input class="inline-value" type="number" name="controlFailure" value="0" min="0"></p>
+      <p class="line"><label class="field">{{localize "GMENTOR.Attack.controlFailure"}} <input class="inline-value" type="number" name="controlFailure" value="0" min="0"></label></p>
       {{#each vehicleOptions}}
       <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.Attack.vehicleOption." this)}}</label></p>
       {{/each}}

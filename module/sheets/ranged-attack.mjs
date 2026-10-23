@@ -56,10 +56,17 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     // Бонус оптики записан после Acc: "4+2" (B278), с ним флажок оптики сразу включён
     const opticsBonus = Number(String(mode.accuracyText).split("+")[1]) || 0;
     return Object.assign(context, {
+      rootId: this.id,
       item: this.#item,
       mode,
       ammo: this.#item.system.loadedAmmo ?? null,
       skill: mode.level ?? 10,
+      minSt: mode.minSt || 0,
+      // Пустые ROF, Bulk и Rcl — как в расчёте и в GMentor
+      rateOfFire: mode.rateOfFire || 1,
+      bulk: mode.bulk || -1,
+      recoil: mode.recoil || 1,
+      shotsLeft: this.#shotsInMagazine(),
       energyStep: rules.damageParts(mode.damageText).map(rules.energyStep).find(Boolean) ?? null,
       opticsBonus,
       locations: rules.ATTACK_LOCATIONS.map(({ key, toHit }) => ({
@@ -80,6 +87,17 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     });
   }
 
+  /**
+   * Патроны в магазине: остаток заряженного боеприпаса, без него — ёмкость оружия, как в GMentor.
+   * У оружия без ёмкости (заклинание) — null: патроны не считаются.
+   */
+  #shotsInMagazine() {
+    const ammo = this.#item.system.loadedAmmo;
+    if ( ammo ) return ammo.system.quantity;
+    const capacity = parseInt(this.mode.shots);
+    return Number.isFinite(capacity) ? capacity : null;
+  }
+
   /** @inheritDoc */
   async _onRender(context, options) {
     await super._onRender(context, options);
@@ -90,12 +108,16 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     this.#refresh();
   }
 
-  /** Скорость в м/с и км/ч связаны, как в GMentor; остальное только пересчитывает итог. */
+  /**
+   * Скорость в м/с и км/ч связаны, как в GMentor; новая ёмкость магазина — перезарядка: патронов в магазине столько же.
+   * Остальное только пересчитывает итог.
+   */
   #onInput(event) {
     const { name, value } = event.target;
     const form = this.element;
     if ( name === "speed" ) form.elements.speedKmh.value = Math.round(Number(value) * 3.6 * 100) / 100;
     if ( name === "speedKmh" ) form.elements.speed.value = Math.round(Number(value) / 3.6 * 100) / 100;
+    if ( (name === "magazine") && Number.isFinite(parseInt(value)) ) form.elements.shotsLeft.value = parseInt(value);
     this.#refresh();
   }
 
@@ -104,6 +126,8 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     const values = new foundry.applications.ux.FormDataExtended(this.element).object;
     for ( const key of NUMBER_FIELDS ) values[key] = Number(values[key]) || 0;
     values.shots = Math.max(values.shots, 1);
+    // Без счётчика патронов (оружие без ёмкости) выстрелы не ограничены
+    values.shotsLeft = ("shotsLeft" in values) ? (Number(values.shotsLeft) || 0) : Infinity;
     // Число перекрывающих и стрельба по возможности действуют вместе со своими флажками
     values.blockers = values.blockersOn ? values.blockersCount : 0;
     if ( !values.opportunityFire ) Object.assign(values, { opportunity: null, opportunityCheck: false });
@@ -147,15 +171,16 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     form.elements.distance.classList.toggle("info", attack.halfDamage);
     form.elements.distance.classList.toggle("warning", (attack.range.max !== null) && (values.distance >= attack.range.max));
     form.elements.shots.classList.toggle("warning", attack.shotsWarning);
+    form.elements.shotsLeft?.classList.toggle("warning", values.shotsLeft <= 0);
     form.querySelector("[data-preview=damage]").textContent = attack.damage;
-    // Остаток боеприпаса меняется после каждого броска, окно при этом не перерисовывается
-    const ammoLeft = form.querySelector("[data-preview=ammo]");
-    if ( ammoLeft ) ammoLeft.textContent = this.#item.system.loadedAmmo?.system.quantity ?? 0;
     form.querySelector("[data-preview=target]").textContent = attack.target;
   }
 
   static async #onSubmit(event, form, formData) {
-    await this.#item.actor.rangedAttack(this.#item, this.#modeIndex, this.#values());
+    const values = this.#values();
+    await this.#item.actor.rangedAttack(this.#item, this.#modeIndex, values);
+    // Патроны в магазине уменьшаются в окне, как в GMentor; заряженный боеприпас списывает rangedAttack
+    if ( values.spendAmmo ) form.elements.shotsLeft.value = Math.max(values.shotsLeft - values.shots, 0);
     this.#refresh();
   }
 }
@@ -175,6 +200,7 @@ function roundsText(rounds) {
  */
 export function describeRangedAttack(item, mode, values) {
   const actor = item.actor;
+  mode = editedMode(mode, values);
   const parsedAccuracy = parseInt(mode.accuracyText);
   const accuracy = Number.isFinite(parsedAccuracy) ? parsedAccuracy : 1;
   const range = rules.parseRange(mode.rangeText);
@@ -216,12 +242,30 @@ export function describeRangedAttack(item, mode, values) {
     return rules.rangedDamage(withEnergy, changes);
   }).join(" + ");
 
-  // Выстрелов больше RoF, меньше минимальной очереди или больше, чем осталось в заряженном боеприпасе
-  const ammo = item.system.loadedAmmo;
+  // Выстрелов больше RoF, меньше минимальной очереди или больше, чем осталось в магазине
   const shots = values.shots;
   return {
     target, damage, accuracy, range, recoil, lowSt, aimOptions, halfDamage, shotgun,
     fired: burst * shots,
-    shotsWarning: (shots > rof) || (shots < minShots) || (!!ammo && (shots > ammo.system.quantity))
+    shotsWarning: (shots > rof) || (shots < minShots) || (shots > values.shotsLeft)
   };
+}
+
+// Данные оружия, которые правятся в строке окна атаки
+const WEAPON_FIELDS = ["damageText", "minSt", "accuracyText", "rangeText", "rateOfFire", "bulk", "recoil"];
+
+/**
+ * Режим оружия с данными, исправленными в окне атаки, как editable-поля obj-names-short GMentor.
+ * Пустое поле оставляет данные оружия. Исправленный урон становится и базовым: по нему Мастер оружия считает кубики.
+ * @param {object} mode    Режим оружия с итогами персонажа
+ * @param {object} values  Значения окна атаки
+ */
+export function editedMode(mode, values) {
+  const edited = { ...mode };
+  for ( const key of WEAPON_FIELDS ) {
+    const value = values[key]?.trim();
+    if ( value ) edited[key] = value;
+  }
+  if ( edited.damageText !== mode.damageText ) edited.damage = edited.damageText;
+  return edited;
 }

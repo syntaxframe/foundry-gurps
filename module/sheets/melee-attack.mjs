@@ -1,4 +1,5 @@
 import * as rules from "../rules.mjs";
+import { editedMode } from "./ranged-attack.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -59,8 +60,10 @@ export default class MeleeAttackDialog extends HandlebarsApplicationMixin(Applic
     const mode = this.mode;
     const localized = (keys, prefix) => Object.fromEntries(keys.map(key => [key, `GMENTOR.${prefix}.${key}`]));
     return Object.assign(context, {
+      rootId: this.id,
       mode,
       skill: mode.level ?? 10,
+      minSt: mode.minSt || 0,
       bareHands: BARE_HANDS_USAGES.includes(mode.usage),
       energyStep: rules.damageParts(mode.damageText).map(rules.energyStep).find(Boolean) ?? null,
       locations: rules.ATTACK_LOCATIONS.map(({ key, toHit }) => ({
@@ -153,6 +156,7 @@ export default class MeleeAttackDialog extends HandlebarsApplicationMixin(Applic
  */
 export function describeMeleeAttack(item, mode, values) {
   const actor = item.actor;
+  mode = editedMode(mode, values);
   const lowSt = Math.min(actor.system.attributes.st.total - (parseInt(mode.minSt) || 0), 0);
   const target = rules.meleeAttackTarget({ ...values, lowSt: values.lowStPenalty ? lowSt : 0 });
 
