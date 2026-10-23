@@ -2,6 +2,9 @@ import * as rules from "../rules.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+// Где искать подписи флажков для списка модификаторов в результате (showAttackResult)
+const RANGED_OPTION_LABELS = ["GMENTOR.Attack.option", "GMENTOR.Attack.vehicleOption"];
+
 // Числовые поля формы; остальные — флажки и списки
 const NUMBER_FIELDS = ["skill", "dr", "distance", "speed", "shots", "energy", "aimRounds", "opticsBonus", "modifier",
   "height", "heightFactor", "sizeMeters", "sizeSm", "blockersCount", "weaponMaster", "visibility", "controlFailure"];
@@ -178,7 +181,10 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
 
   static async #onSubmit(event, form, formData) {
     const values = this.#values();
-    await this.#item.actor.rangedAttack(this.#item, this.#modeIndex, values);
+    const attack = describeRangedAttack(this.#item, this.mode, values);
+    const message = await this.#item.actor.rangedAttack(this.#item, this.#modeIndex, values);
+    showAttackResult(form.querySelector(".roll-results"), message, attack, values.skill, RANGED_OPTION_LABELS);
+    this.setPosition({ height: "auto" });
     // Патроны в магазине уменьшаются в окне, как в GMentor; заряженный боеприпас списывает rangedAttack
     if ( values.spendAmmo ) form.elements.shotsLeft.value = Math.max(values.shotsLeft - values.shots, 0);
     this.#refresh();
@@ -223,9 +229,9 @@ export function describeRangedAttack(item, mode, values) {
   if ( values.sizeMode === "meters" ) size = rules.sizeModifier(values.sizeMeters || 2);
   if ( values.sizeMode === "sm" ) size = values.sizeSm;
 
-  const target = rules.rangedAttackTarget({
+  const { target, modifiers, capped } = rules.rangedAttackTarget({
     ...values,
-    modifier: values.modifier + rules.rangedOptionsModifier(values, bulk),
+    optionModifiers: rules.rangedOptionModifiers(values, bulk),
     aim,
     burst,
     size,
@@ -245,7 +251,7 @@ export function describeRangedAttack(item, mode, values) {
   // Выстрелов больше RoF, меньше минимальной очереди или больше, чем осталось в магазине
   const shots = values.shots;
   return {
-    target, damage, accuracy, range, recoil, lowSt, aimOptions, halfDamage, shotgun,
+    target, modifiers, capped, damage, accuracy, range, recoil, lowSt, aimOptions, halfDamage, shotgun,
     fired: burst * shots,
     shotsWarning: (shots > rof) || (shots < minShots) || (shots > values.shotsLeft)
   };
@@ -268,4 +274,56 @@ export function editedMode(mode, values) {
   }
   if ( edited.damageText !== mode.damageText ) edited.damage = edited.damageText;
   return edited;
+}
+
+/**
+ * Результат атаки в окне, как skill-results инструментов GMentor: грани кубиков и сумма, затем то же, что в чате
+ * (исход, крит, попадания, урон и ранение), и из чего сложился навык. Новый бросок — сверху.
+ * @param {HTMLElement} container   Список результатов окна
+ * @param {ChatMessage} message     Сообщение атаки (GMentorActor#rangedAttack, #meleeAttack)
+ * @param {object} attack           Итог атаки на момент броска (describeRangedAttack, describeMeleeAttack)
+ * @param {number} skill            Уровень оружия из окна
+ * @param {string[]} optionLabels   Где искать подписи флажков: «GMENTOR.Attack.option» и т.п.
+ */
+export function showAttackResult(container, message, attack, skill, optionLabels) {
+  const result = document.createElement("div");
+  result.className = `roll-result attack-result ${message.getFlag("gmentor", "outcome") ?? ""}`;
+  result.dataset.tooltipText = new Date().toLocaleTimeString();
+
+  // ⚀–⚅ идут в Юникоде подряд с U+2680
+  const roll = message.rolls[0];
+  const head = document.createElement("p");
+  head.innerHTML = `<span class="dice"></span> = <span class="total"></span>`;
+  head.querySelector(".dice").textContent = roll.dice[0].results.map(die => String.fromCodePoint(0x267F + die.result)).join(" ");
+  head.querySelector(".total").textContent = roll.total;
+  result.append(head);
+  // Содержимое сообщения собрано нашим шаблоном (chat/ranged-attack.hbs), пользовательский текст в нём экранирован
+  result.insertAdjacentHTML("beforeend", message.flavor);
+
+  const modifiers = document.createElement("p");
+  modifiers.className = "attack-modifiers";
+  modifiers.textContent = attackModifiersText(attack, skill, optionLabels);
+  result.append(modifiers);
+  container.prepend(result);
+}
+
+/** «Умение 14 · Тотальная атака, точная +4 · Череп −7 · не выше 9 = 9». */
+function attackModifiersText({ modifiers, capped, target }, skill, optionLabels) {
+  const parts = [`${game.i18n.localize("GMENTOR.Attack.modifierLabel.skill")} ${skill}`];
+  for ( const modifier of modifiers ) parts.push(`${attackModifierLabel(modifier, optionLabels)} ${modifier.value.signedString()}`);
+  if ( capped ) parts.push(game.i18n.localize("GMENTOR.Attack.modifierLabel.capped"));
+  return `${parts.join(" · ")} = ${target}`;
+}
+
+/**
+ * Подпись модификатора: локация — её названием, у флажков — их подпись без значения в скобках и английского
+ * названия («Плохая поверхность (-2) — Bad Footing» → «Плохая поверхность»), остальное — GMENTOR.Attack.modifierLabel.
+ */
+function attackModifierLabel({ key, location }, optionLabels) {
+  if ( key === "location" ) return game.i18n.localize(`GMENTOR.Attack.location.${location}`);
+  const ownKey = `GMENTOR.Attack.modifierLabel.${key}`;
+  if ( game.i18n.has(ownKey) ) return game.i18n.localize(ownKey);
+  const optionKey = optionLabels.map(prefix => `${prefix}.${key}`).find(labelKey => game.i18n.has(labelKey));
+  if ( !optionKey ) return key;
+  return game.i18n.localize(optionKey).split(" (")[0].split(" — ")[0];
 }

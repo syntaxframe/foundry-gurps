@@ -1,5 +1,5 @@
 import * as rules from "../rules.mjs";
-import { editedMode } from "./ranged-attack.mjs";
+import { editedMode, showAttackResult } from "./ranged-attack.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -144,7 +144,12 @@ export default class MeleeAttackDialog extends HandlebarsApplicationMixin(Applic
   }
 
   static async #onSubmit(event, form, formData) {
-    await this.#item.actor.meleeAttack(this.#item, this.#modeIndex, this.#values());
+    const values = this.#values();
+    const attack = describeMeleeAttack(this.#item, this.mode, values);
+    const messages = await this.#item.actor.meleeAttack(this.#item, this.#modeIndex, values);
+    const results = form.querySelector(".roll-results");
+    for ( const message of messages ) showAttackResult(results, message, attack, values.skill, ["GMENTOR.MeleeAttack.option"]);
+    this.setPosition({ height: "auto" });
   }
 }
 
@@ -158,7 +163,7 @@ export function describeMeleeAttack(item, mode, values) {
   const actor = item.actor;
   mode = editedMode(mode, values);
   const lowSt = Math.min(actor.system.attributes.st.total - (parseInt(mode.minSt) || 0), 0);
-  const target = rules.meleeAttackTarget({ ...values, lowSt: values.lowStPenalty ? lowSt : 0 });
+  const { target, modifiers, capped } = rules.meleeAttackTarget({ ...values, lowSt: values.lowStPenalty ? lowSt : 0 });
 
   // Мастер оружия: +1 или +2 за кубик базового урона (B99); сильная тотальная атака: +2 или +1 за кубик (B365)
   const baseDice = rules.damageDice(mode.damage, actor.system.damage);
@@ -173,5 +178,5 @@ export function describeMeleeAttack(item, mode, values) {
 
   // Двойная тотальная атака и скоростной удар — ещё по атаке (B365, B370)
   const attacks = 1 + (values.double ? 1 : 0) + (values.rapidStrike ? 1 : 0);
-  return { target, damage, lowSt, attacks };
+  return { target, modifiers, capped, damage, lowSt, attacks };
 }

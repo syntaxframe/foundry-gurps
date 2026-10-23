@@ -1470,9 +1470,9 @@
   font-size: 1.5rem;
 }
 
-/* Окно броска: результаты, как skill-results в GMentor — новый сверху и вздрагивает, прошлые бледнее,
+/* Окна броска и атаки: результаты, как skill-results в GMentor — новый сверху и вздрагивает, прошлые бледнее,
    у критических мигает рамка */
-.gmentor.success-roll .roll-result {
+.gmentor:is(.success-roll, .attack-window) .roll-result {
   margin: 0.6rem 0;
   padding: 0.3rem;
   border: 2px solid var(--gm-bg);
@@ -1481,39 +1481,39 @@
   font-size: 1rem;
 }
 
-.gmentor.success-roll .roll-result:first-child {
+.gmentor:is(.success-roll, .attack-window) .roll-result:first-child {
   animation: gm-shake 0.25s 1;
 }
 
-.gmentor.success-roll .roll-result:nth-child(n+2):not(:hover) {
+.gmentor:is(.success-roll, .attack-window) .roll-result:nth-child(n+2):not(:hover) {
   opacity: 0.5;
 }
 
-.gmentor.success-roll .roll-result:is(.success, .critSuccess) {
+.gmentor:is(.success-roll, .attack-window) .roll-result:is(.success, .critSuccess) {
   background: var(--gm-roll-success);
 }
 
-.gmentor.success-roll .roll-result:is(.failure, .critFailure) {
+.gmentor:is(.success-roll, .attack-window) .roll-result:is(.failure, .critFailure) {
   background: var(--gm-roll-failure);
 }
 
-.gmentor.success-roll .roll-result.critSuccess {
+.gmentor:is(.success-roll, .attack-window) .roll-result.critSuccess {
   animation: gm-crit 0.6s alternate infinite ease-in-out;
   --gm-crit-color: var(--gm-roll-crit-success);
 }
 
-.gmentor.success-roll .roll-result.critFailure {
+.gmentor:is(.success-roll, .attack-window) .roll-result.critFailure {
   animation: gm-crit 0.6s alternate infinite ease-in-out;
   --gm-crit-color: var(--gm-roll-crit-failure);
 }
 
-.gmentor.success-roll .roll-result .dice {
+.gmentor:is(.success-roll, .attack-window) .roll-result .dice {
   font-size: 169%;
   opacity: 0.8;
   vertical-align: sub;
 }
 
-.gmentor.success-roll .roll-result .total {
+.gmentor:is(.success-roll, .attack-window) .roll-result .total {
   font-size: 150%;
 }
 
@@ -1726,6 +1726,33 @@
 .gmentor.attack-window .damage-preview {
   margin-top: 1rem;
   text-align: center;
+}
+
+/* Результат атаки в окне: то же, что в чате, но белым по цвету исхода; заголовок сообщения не нужен,
+   под ним — из чего сложился навык */
+.gmentor.attack-window .roll-result p {
+  margin: 0.25rem 0;
+}
+
+.gmentor.attack-window .roll-result .gmentor-roll h3 {
+  display: none;
+}
+
+.gmentor.attack-window .roll-result .gmentor-roll :is(.outcome, .note, .warning, .critical) {
+  color: inherit;
+}
+
+/* Ранение — рамкой, а не серой плашкой: на цвете исхода она не читается */
+.gmentor.attack-window .roll-result .note-block {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+}
+
+.gmentor.attack-window .roll-result .attack-modifiers {
+  font-size: 0.85rem;
+  opacity: 0.85;
 }
 
 /* Вопросы при добавлении: модификаторы строками, между группами разделитель, цена и ссылка справа */

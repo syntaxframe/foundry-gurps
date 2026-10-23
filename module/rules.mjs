@@ -667,10 +667,11 @@ export function aimBonus(rounds, accuracy, { optics = false, opticsBonus = 0, va
 
 /**
  * Итоговый навык дистанционной атаки, как toolRangedAttack в GMentor (B372, B548–B550). Флажки с постоянным
- * модификатором (тотальная атака, плохая поверхность, транспорт) приходят суммой в options.
+ * модификатором (тотальная атака, плохая поверхность, транспорт) приходят списком в optionModifiers.
  * @param {object} values
  * @param {number} values.skill        Уровень оружия
- * @param {number} values.modifier     Прочие модификаторы и сумма флажков
+ * @param {number} values.modifier     Прочие модификаторы
+ * @param {object[]} values.optionModifiers  Модификаторы флажков (rangedOptionModifiers)
  * @param {string} values.location     Ключ ATTACK_LOCATIONS
  * @param {boolean} values.armorGaps   Сквозь щели в доспехах: −8 в торс, −10 в остальное вместо штрафа локации
  * @param {number} values.aim          Бонус прицеливания (aimBonus); при движении и атаке и высовывании — 0
@@ -686,29 +687,51 @@ export function aimBonus(rounds, accuracy, { optics = false, opticsBonus = 0, va
  * @param {number} values.visibility   Видимость, −10 — темнота
  * @param {boolean} values.unseen      Врага не видно: навык не выше 9
  * @param {number} values.controlFailure  На сколько провален бросок управления транспортом
+ * @returns {{target: number, modifiers: object[], capped: boolean}}  Навык, ненулевые модификаторы {key, value}
+ *   (у локации ещё location — ключ ATTACK_LOCATIONS) и ограничен ли навык 9
  */
-export function rangedAttackTarget({ skill, modifier = 0, location = "torso", armorGaps = false, aim = 0,
-  brace = false, distance = 0, speed = 0, height = 0, heightFactor = 0, shots = 1, burst = 1, pose = false,
+export function rangedAttackTarget({ skill, modifier = 0, optionModifiers = [], location = "torso", armorGaps = false,
+  aim = 0, brace = false, distance = 0, speed = 0, height = 0, heightFactor = 0, shots = 1, burst = 1, pose = false,
   size = 0, lowSt = 0, visibility = 0, unseen = false, controlFailure = 0 }) {
-  let target = skill + modifier + lowSt + visibility + size - controlFailure;
   const aimed = ATTACK_LOCATIONS.find(entry => entry.key === location) ?? ATTACK_LOCATIONS[1];
-  if ( armorGaps ) target += (aimed.location === "torso") ? -8 : -10;
-  else target += aimed.toHit;
-  if ( pose && ["torso", "leg", "groin"].includes(aimed.key) ) target -= 2;
-  target += aim + ((brace && (aim > 0)) ? 1 : 0);
   // Стрелок выше цели сокращает расстояние, но не больше чем вдвое
   let heightShift = Math.ceil(height * heightFactor);
   if ( heightShift < -distance / 2 ) heightShift = -Math.floor(distance / 2);
-  target += rangeSpeedModifier(distance + speed + heightShift);
-  target += rapidFireBonus(burst * shots);
-  if ( unseen || (visibility <= -10) ) target = Math.min(target, 9);
-  return target;
+  const targetCrouching = pose && ["torso", "leg", "groin"].includes(aimed.key);
+  const modifiers = [
+    { key: "modifier", value: modifier },
+    ...optionModifiers,
+    locationModifier(aimed, armorGaps),
+    { key: "targetPose", value: targetCrouching ? -2 : 0 },
+    { key: "aim", value: aim },
+    { key: "brace", value: (brace && (aim > 0)) ? 1 : 0 },
+    { key: "range", value: rangeSpeedModifier(distance + speed + heightShift) },
+    { key: "rapidFire", value: rapidFireBonus(burst * shots) },
+    { key: "size", value: size },
+    { key: "lowSt", value: lowSt },
+    { key: "visibility", value: visibility },
+    { key: "controlFailure", value: -controlFailure }
+  ];
+  return attackTarget(skill, modifiers, unseen || (visibility <= -10));
+}
+
+/** Штраф за локацию; сквозь щели в доспехах — −8 в торс, −10 в остальное вместо него (B400). */
+function locationModifier(aimed, armorGaps) {
+  if ( armorGaps ) return { key: "armorGaps", value: (aimed.location === "torso") ? -8 : -10 };
+  return { key: "location", location: aimed.key, value: aimed.toHit };
+}
+
+/** Навык атаки: уровень плюс модификаторы, при ограничении — не выше 9 (B365, B388, B394). Нулевые модификаторы отбрасываются. */
+function attackTarget(skill, modifiers, capped) {
+  const applied = modifiers.filter(({ value }) => value !== 0);
+  const target = skill + applied.reduce((sum, { value }) => sum + value, 0);
+  return { target: capped ? Math.min(target, 9) : target, modifiers: applied, capped };
 }
 
 /**
  * Флажки окна атаки с постоянным модификатором (B548), как флажки с value в GMentor. Атака с транспорта — B467.
  * Движение и атака (−2 или Bulk, если он хуже), бой вплотную (Bulk) и перекрывающие цель (−4 за каждого)
- * зависят от оружия и считаются в rangedOptionsModifier.
+ * зависят от оружия и считаются в rangedOptionModifiers.
  */
 export const RANGED_ATTACK_OPTIONS = { allOutAttack: 1, badFooting: -2, offHand: -4, dualWeapons: -4, popUp: -2,
   lightCover: -2, partlyHidden: -2, unfamiliar: -2, unseen: -6, unseenKnown: -4, opportunityCheck: -2 };
@@ -722,22 +745,23 @@ export const VEHICLE_ATTACK_OPTIONS = { hanging: -6, turnedBack: -4, vehicleDodg
 export const OPPORTUNITY_FIRE = { hex1: 0, hex2: -1, hex4: -2, hex6: -3, hex10: -4, hex11: -5, line: -2 };
 
 /**
- * Сумма флажков окна атаки: постоянные модификаторы, движение и атака, бой вплотную, перекрывающие цель
+ * Модификаторы флажков окна атаки: постоянные, движение и атака, бой вплотную, перекрывающие цель
  * и стрельба по возможности.
  * @param {object} options  Включённые флажки (ключи RANGED_ATTACK_OPTIONS и VEHICLE_ATTACK_OPTIONS),
  *                          moveAndAttack, closeCombat, blockers — сколько людей перекрывают цель, opportunity
  * @param {number} bulk     Громоздкость оружия
+ * @returns {object[]}  [{key, value}] включённых флажков
  */
-export function rangedOptionsModifier(options, bulk) {
-  let modifier = 0;
+export function rangedOptionModifiers(options, bulk) {
+  const modifiers = [];
   for ( const [key, value] of Object.entries({ ...RANGED_ATTACK_OPTIONS, ...VEHICLE_ATTACK_OPTIONS }) ) {
-    if ( options[key] ) modifier += value;
+    if ( options[key] ) modifiers.push({ key, value });
   }
-  if ( options.moveAndAttack ) modifier += Math.min(bulk, -2);
-  if ( options.closeCombat ) modifier += bulk;
-  if ( options.blockers > 0 ) modifier -= 4 * options.blockers;
-  if ( options.opportunity ) modifier += OPPORTUNITY_FIRE[options.opportunity] ?? 0;
-  return modifier;
+  if ( options.moveAndAttack ) modifiers.push({ key: "moveAndAttack", value: Math.min(bulk, -2) });
+  if ( options.closeCombat ) modifiers.push({ key: "closeCombat", value: bulk });
+  if ( options.blockers > 0 ) modifiers.push({ key: "blockers", value: -4 * options.blockers });
+  if ( options.opportunity ) modifiers.push({ key: "opportunityFire", value: OPPORTUNITY_FIRE[options.opportunity] ?? 0 });
+  return modifiers;
 }
 
 /**
@@ -785,20 +809,28 @@ const MELEE_CAPPED_OPTIONS = ["moveAndAttack", "wildSwing", "unseen", "unseenKno
  * @param {number} values.evaluate       Оценка (B364): +1 за раунд
  * @param {number} values.pose           Поза атакующего (B551)
  * @param {number} values.visibility     Видимость, −10 — темнота
+ * @returns {{target: number, modifiers: object[], capped: boolean}}  Как у rangedAttackTarget
  */
 export function meleeAttackTarget({ skill, modifier = 0, location = "torso", armorGaps = false, lowSt = 0,
   rapidStrike = false, trainedByMaster = false, deceptive = 0, shieldDb = 0, evaluate = 0, pose = 0,
   visibility = 0, ...options }) {
-  let target = skill + modifier + lowSt + evaluate + pose + visibility - shieldDb - 2 * deceptive;
   const aimed = ATTACK_LOCATIONS.find(entry => entry.key === location) ?? ATTACK_LOCATIONS[1];
-  if ( armorGaps ) target += (aimed.location === "torso") ? -8 : -10;
-  else target += aimed.toHit;
-  if ( rapidStrike ) target += trainedByMaster ? -3 : -6;
+  const modifiers = [
+    { key: "modifier", value: modifier },
+    locationModifier(aimed, armorGaps),
+    { key: "lowSt", value: lowSt },
+    { key: "evaluate", value: evaluate },
+    { key: "attackerPose", value: pose },
+    { key: "deceptive", value: -2 * deceptive },
+    { key: "rapidStrike", value: rapidStrike ? (trainedByMaster ? -3 : -6) : 0 },
+    { key: "shield", value: -shieldDb }
+  ];
   for ( const [key, value] of Object.entries(MELEE_ATTACK_OPTIONS) ) {
-    if ( options[key] ) target += value;
+    if ( options[key] ) modifiers.push({ key, value });
   }
+  modifiers.push({ key: "visibility", value: visibility });
   const capped = MELEE_CAPPED_OPTIONS.some(key => options[key]) || (visibility <= -10);
-  return capped ? Math.min(target, 9) : target;
+  return attackTarget(skill, modifiers, capped);
 }
 
 /**

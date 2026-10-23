@@ -130,8 +130,10 @@ export default class GMentorActor extends Actor {
       total: (hits.length > 1) && text("total", { total }),
       wound
     });
-    const messageData = await roll.toMessage({ speaker: ChatMessage.getSpeaker({ actor: this }), flavor: content },
-      { create: false });
+    // Исход во флаге — для окна атаки, которое показывает результат у себя (#showAttackResult)
+    const messageData = await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor: this }), flavor: content, flags: { gmentor: { outcome } }
+    }, { create: false });
     messageData.rolls = rolls;
     return ChatMessage.implementation.create(messageData);
   }
@@ -142,10 +144,13 @@ export default class GMentorActor extends Actor {
    * @param {Item} item       Оружие или заклинание
    * @param {number} index    Индекс режима в item.system.weapons
    * @param {object} values   Значения окна атаки
+   * @returns {Promise<ChatMessage[]>}  Сообщения атак по порядку
    */
   async meleeAttack(item, index, values) {
     const attack = describeMeleeAttack(item, item.system.weapons[index], values);
-    for ( let i = 0; i < attack.attacks; i++ ) await this.#meleeStrike(item, attack, values);
+    const messages = [];
+    for ( let i = 0; i < attack.attacks; i++ ) messages.push(await this.#meleeStrike(item, attack, values));
+    return messages;
   }
 
   /** Одна контактная атака: исход, крит (голыми руками — своя таблица промаха), урон удара против DR и ранение. */
@@ -172,8 +177,10 @@ export default class GMentorActor extends Actor {
       missByOne: missByOne && text("missByOne", { location: text(`hitLocation.${missByOne}`) }),
       critical, hitText, notes, hits, wound
     });
-    const messageData = await roll.toMessage({ speaker: ChatMessage.getSpeaker({ actor: this }), flavor: content },
-      { create: false });
+    // Исход во флаге — для окна атаки, которое показывает результат у себя (#showAttackResult)
+    const messageData = await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor: this }), flavor: content, flags: { gmentor: { outcome } }
+    }, { create: false });
     messageData.rolls = rolls;
     return ChatMessage.implementation.create(messageData);
   }
