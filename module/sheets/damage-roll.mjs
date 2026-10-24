@@ -127,7 +127,7 @@ export default class DamageRollDialog extends HandlebarsApplicationMixin(Applica
 }
 
 /** Грани брошенных кубиков: у d6 — ⚀–⚅ (в Юникоде подряд с U+2680), у остальных — числа. */
-function faces(roll) {
+export function faces(roll) {
   const die = roll.dice[0];
   return die.results.map(({ result }) => (die.faces === 6 ? String.fromCodePoint(0x267F + result) : result)).join(" ");
 }

@@ -267,6 +267,7 @@
       "notOwner": "Only the character's owner can spend the energy"
     },
     "Attack": {
+      "useTarget": "Use selected target:",
       "title": "Ranged Attack",
       "spendAmmo": "Spend ammo on attack ({ammo})",
       "spendShots": "Spend ammo on attack",

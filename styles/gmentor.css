@@ -1742,8 +1742,27 @@
   color: inherit;
 }
 
-/* Ранение — рамкой, а не серой плашкой: на цвете исхода она не читается */
-.gmentor.attack-window .roll-result .note-block {
+/* Грани кубиков урона — только в окне: в чате Foundry сам показывает броски */
+.gmentor-roll .hit-dice {
+  display: none;
+}
+
+.gmentor.attack-window .roll-result .hit-dice {
+  display: inline;
+}
+
+.gmentor.attack-window .roll-result .hit-dice .dice {
+  font-size: 150%;
+  vertical-align: sub;
+}
+
+/* Урон и ранение — рамкой, а не серой плашкой: на цвете исхода она не читается */
+.gmentor.attack-window .roll-result .damage-block {
+  margin: 0.25rem 0;
+  padding: 0 0.5rem;
+}
+
+.gmentor.attack-window .roll-result :is(.damage-block, .note-block) {
   border: 1px solid currentColor;
   border-radius: 4px;
   background: none;
@@ -1751,6 +1770,7 @@
 }
 
 .gmentor.attack-window .roll-result .attack-modifiers {
+  white-space: pre-line;
   font-size: 0.85rem;
   opacity: 0.85;
 }

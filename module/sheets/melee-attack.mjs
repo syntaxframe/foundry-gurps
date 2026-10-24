@@ -1,5 +1,5 @@
 import * as rules from "../rules.mjs";
-import { editedMode, showAttackResult } from "./ranged-attack.mjs";
+import { applyTarget, attackTarget, editedMode, onTargetInput, showAttackResult } from "./ranged-attack.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -45,6 +45,9 @@ export default class MeleeAttackDialog extends HandlebarsApplicationMixin(Applic
 
   #modeIndex;
 
+  /** Выбранная цель на момент открытия окна (attackTarget) или null. */
+  #target = null;
+
   get mode() {
     return this.#item.system.weapons[this.#modeIndex];
   }
@@ -59,9 +62,12 @@ export default class MeleeAttackDialog extends HandlebarsApplicationMixin(Applic
     const context = await super._prepareContext(options);
     const mode = this.mode;
     const localized = (keys, prefix) => Object.fromEntries(keys.map(key => [key, `GMENTOR.${prefix}.${key}`]));
+    // DR — от выбранной цели, остальное вводится в окне
+    this.#target = attackTarget(this.#item.actor);
     return Object.assign(context, {
       rootId: this.id,
       mode,
+      target: this.#target,
       skill: mode.level ?? 10,
       minSt: mode.minSt || 0,
       bareHands: BARE_HANDS_USAGES.includes(mode.usage),
@@ -89,12 +95,17 @@ export default class MeleeAttackDialog extends HandlebarsApplicationMixin(Applic
     this.element.addEventListener("input", event => this.#onInput(event));
     // Раскрытые модификаторы длиннее экрана: подгоняем высоту окна заново. Событие toggle не всплывает
     this.element.addEventListener("toggle", () => this.setPosition({ height: "auto" }), true);
+    if ( this.#target ) applyTarget(this.element, this.#target);
     this.#refresh();
   }
 
-  /** Включённый вариант тотальной атаки снимает остальные, как в GMentor; остальное только пересчитывает итог. */
+  /**
+   * Включённый вариант тотальной атаки снимает остальные, как в GMentor; флажок выбранной цели и поля,
+   * от которых зависит её DR, — onTargetInput. Остальное только пересчитывает итог.
+   */
   #onInput(event) {
     const { name, checked } = event.target;
+    onTargetInput(this.element, this.#target, name);
     if ( ALL_OUT_ATTACKS.includes(name) && checked ) {
       for ( const other of ALL_OUT_ATTACKS ) {
         if ( other !== name ) this.element.elements[other].checked = false;

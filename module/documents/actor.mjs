@@ -1,6 +1,7 @@
 import { conditionGroup } from "../conditions.mjs";
 import { ATTACK_LOCATIONS, damageParts, damageRecord, energyDamage, energyStep, hitsFromMargin, missByOneLocation,
   parseDamage, penetratingDamage, randomLocation, spentEnergy, successOutcome, woundingModifier } from "../rules.mjs";
+import { faces } from "../sheets/damage-roll.mjs";
 import { describeMeleeAttack } from "../sheets/melee-attack.mjs";
 import { describeRangedAttack } from "../sheets/ranged-attack.mjs";
 import { describeCasting } from "../sheets/spell-cast.mjs";
@@ -231,7 +232,7 @@ export default class GMentorActor extends Actor {
   /**
    * Урон одного снаряда по частям: часть с кубиками бросается и проходит DR, остальное ("Paralysis") — текстом.
    * Урон не меньше 1, у дробящего — 0 (B378), после DR — не меньше 0. Броски добавляются в rolls.
-   * @returns {Promise<object[]>}  [{text, rolled, damage, dr, penetrating, type}] или [{text}]
+   * @returns {Promise<object[]>}  [{text, faces, adds, rolled, damage, dr, penetrating, type}] или [{text}]
    */
   async #rollProjectile(damage, dr, rolls) {
     const parts = [];
@@ -245,7 +246,11 @@ export default class GMentorActor extends Actor {
       rolls.push(roll);
       const minimum = (record.type === "cr") ? 0 : 1;
       const result = penetratingDamage(Math.max(roll.total, minimum), record, dr);
-      parts.push({ ...result, rolled: roll.total, multiplier: record.multiplier, type: record.type });
+      // Грани и прибавка — для окна атаки, которое показывает кубики урона (chat/ranged-attack.hbs, .hit-dice)
+      parts.push({
+        ...result, faces: faces(roll), adds: roll.total - roll.dice[0].total, rolled: roll.total,
+        multiplier: record.multiplier, type: record.type
+      });
     }
     return parts;
   }

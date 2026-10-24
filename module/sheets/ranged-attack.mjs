@@ -41,6 +41,9 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
 
   #modeIndex;
 
+  /** Выбранная цель на момент открытия окна (attackTarget) или null. */
+  #target = null;
+
   /** Режим оружия с итогами персонажа: берём заново, чтобы видеть израсходованные патроны. */
   get mode() {
     return this.#item.system.weapons[this.#modeIndex];
@@ -58,10 +61,13 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     const localized = (keys, prefix) => Object.fromEntries(keys.map(key => [key, `GMENTOR.Attack.${prefix}.${key}`]));
     // Бонус оптики записан после Acc: "4+2" (B278), с ним флажок оптики сразу включён
     const opticsBonus = Number(String(mode.accuracyText).split("+")[1]) || 0;
+    // Расстояние, размер и DR — от выбранной цели (applyTarget), остальное вводится в окне
+    this.#target = attackTarget(this.#item.actor);
     return Object.assign(context, {
       rootId: this.id,
       item: this.#item,
       mode,
+      target: this.#target,
       ammo: this.#item.system.loadedAmmo ?? null,
       skill: mode.level ?? 10,
       minSt: mode.minSt || 0,
@@ -108,16 +114,18 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     // Раскрытые модификаторы длиннее экрана: подгоняем высоту окна заново, содержимое прокручивается (как в GMentor).
     // Событие toggle не всплывает, поэтому ловим его на погружении
     this.element.addEventListener("toggle", () => this.setPosition({ height: "auto" }), true);
+    if ( this.#target ) applyTarget(this.element, this.#target);
     this.#refresh();
   }
 
   /**
    * Скорость в м/с и км/ч связаны, как в GMentor; новая ёмкость магазина — перезарядка: патронов в магазине столько же.
-   * Остальное только пересчитывает итог.
+   * Флажок выбранной цели и поля, от которых зависит её DR, — onTargetInput. Остальное только пересчитывает итог.
    */
   #onInput(event) {
     const { name, value } = event.target;
     const form = this.element;
+    onTargetInput(form, this.#target, name);
     if ( name === "speed" ) form.elements.speedKmh.value = Math.round(Number(value) * 3.6 * 100) / 100;
     if ( name === "speedKmh" ) form.elements.speed.value = Math.round(Number(value) / 3.6 * 100) / 100;
     if ( (name === "magazine") && Number.isFinite(parseInt(value)) ) form.elements.shotsLeft.value = parseInt(value);
@@ -189,6 +197,68 @@ export default class RangedAttackDialog extends HandlebarsApplicationMixin(Appli
     if ( values.spendAmmo ) form.elements.shotsLeft.value = Math.max(values.shotsLeft - values.shots, 0);
     this.#refresh();
   }
+}
+
+// Поля окна, от которых зависит DR выбранной цели
+const TARGET_DR_FIELDS = ["location", "damageText"];
+
+// Поля окна, которые заполняет выбранная цель, и их значения без неё (как в шаблонах окон)
+const TARGET_DEFAULTS = { dr: 0, distance: 1, sizeMode: "human", sizeSm: 0 };
+
+/**
+ * Цель атаки — первый токен, выбранный пользователем (клавиша T), если это не сам атакующий.
+ * Расстояние — по сетке сцены между токенами, как у линейки; ярд сцены — метр окна (таблица B550
+ * у нас в метрах с теми же числами). Без токена атакующего на той же сцене — null.
+ * @param {Actor} attacker
+ * @returns {{name: string, actor: Actor, distance: number|null, sm: number}|null}
+ */
+export function attackTarget(attacker) {
+  const token = game.user.targets.first();
+  const actor = token?.actor;
+  if ( !actor?.system.locations || (actor === attacker) ) return null;
+  const own = attacker.getActiveTokens().find(placeable => placeable.scene === token.scene);
+  const distance = own ? canvas.grid.measurePath([own.center, token.center]).distance : null;
+  return {
+    name: token.name,
+    actor,
+    distance: (distance === null) ? null : Math.round(distance * 10) / 10,
+    sm: actor.system.sm + actor.system.bonuses.sm
+  };
+}
+
+/**
+ * Поля окна атаки по выбранной цели, когда стоит флажок «Учитывать выбранную цель», без флажка — как без цели.
+ * Поля, которых в окне нет (у контактной атаки — всё, кроме DR), пропускаются. Без расстояния до цели
+ * (атакующего нет на сцене) поле расстояния остаётся как есть.
+ */
+export function applyTarget(form, target) {
+  const useTarget = form.elements.useTarget.checked;
+  const values = useTarget ? { sizeMode: "sm", sizeSm: target.sm } : TARGET_DEFAULTS;
+  if ( useTarget && (target.distance !== null) ) values.distance = target.distance;
+  for ( const [name, value] of Object.entries(values) ) {
+    if ( form.elements[name] ) form.elements[name].value = value;
+  }
+  if ( useTarget ) fillTargetDr(form, target);
+}
+
+/**
+ * Изменение поля окна атаки, связанное с выбранной целью: флажок цели заполняет или сбрасывает поля,
+ * локация и урон при включённом флажке меняют DR.
+ * @param {HTMLFormElement} form
+ * @param {object|null} target   attackTarget
+ * @param {string} name          Изменённое поле
+ */
+export function onTargetInput(form, target, name) {
+  if ( !target ) return;
+  if ( name === "useTarget" ) applyTarget(form, target);
+  else if ( TARGET_DR_FIELDS.includes(name) && form.elements.useTarget.checked ) fillTargetDr(form, target);
+}
+
+/** DR выбранной цели в поле окна атаки: по локации и типу урона из окна (rules.targetLocationDr). */
+function fillTargetDr(form, target) {
+  const record = rules.damageParts(form.elements.damageText.value).map(rules.damageRecord).find(Boolean);
+  const dr = rules.targetLocationDr(target.actor.system.locations, form.elements.location.value, record?.type ?? "");
+  if ( dr !== null ) form.elements.dr.value = dr;
 }
 
 /** «2 раунда» по правилам множественного числа языка. */
@@ -307,12 +377,13 @@ export function showAttackResult(container, message, attack, skill, optionLabels
   container.prepend(result);
 }
 
-/** «Умение 14 · Тотальная атака, точная +4 · Череп −7 · не выше 9 = 9». */
+/** Модификаторы в столбик: «Умение 14», «Тотальная атака, точная +4», «Череп −7», «не выше 9», «= 9». */
 function attackModifiersText({ modifiers, capped, target }, skill, optionLabels) {
   const parts = [`${game.i18n.localize("GMENTOR.Attack.modifierLabel.skill")} ${skill}`];
   for ( const modifier of modifiers ) parts.push(`${attackModifierLabel(modifier, optionLabels)} ${modifier.value.signedString()}`);
   if ( capped ) parts.push(game.i18n.localize("GMENTOR.Attack.modifierLabel.capped"));
-  return `${parts.join(" · ")} = ${target}`;
+  parts.push(`= ${target}`);
+  return parts.join("\n");
 }
 
 /**

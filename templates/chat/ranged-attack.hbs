@@ -9,12 +9,14 @@
   {{#each notes}}<p class="note">{{this}}</p>{{/each}}
   {{#if critical}}<p class="critical">{{critical}}</p>{{/if}}
   {{#if hitText}}
+  <div class="damage-block">
   <p>{{hitText}}</p>
   <ul class="hits">
     {{#each hits as |parts|}}
     <li>
       {{#each parts as |part|}}
       {{#if part.rolled includeZero=true}}
+      <span class="hit-dice"><span class="dice">{{part.faces}}</span>{{#if part.adds}} {{numberFormat part.adds sign=true}}{{/if}} =</span>
       {{part.rolled}}{{#if (ne part.multiplier 1)}} ×{{part.multiplier}} = {{part.damage}}{{/if}}{{#if part.dr}} −{{part.dr}} DR{{/if}}
       = <strong>{{part.penetrating}}</strong> {{part.type}}
       {{else}}{{part.text}}{{/if}}{{#unless @last}} + {{/unless}}
@@ -23,6 +25,7 @@
     {{/each}}
   </ul>
   {{#if total}}<p class="note">{{total}}</p>{{/if}}
+  </div>
   {{#if wound}}
   <div class="note-block">
     {{#each wound.lines}}<p><b>{{this}}</b></p>{{/each}}

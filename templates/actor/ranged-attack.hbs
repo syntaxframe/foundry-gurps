@@ -22,6 +22,10 @@
       <input class="inline-value" type="number" name="shotsLeft" value="{{shotsLeft}}" min="0"></span>
     {{/if}}
   </p>
+  {{#if target}}
+  <p class="line"><label><input type="checkbox" name="useTarget" checked> {{localize "GMENTOR.Attack.useTarget"}}
+    <span class="value">{{target.name}}</span></label></p>
+  {{/if}}
   {{#if (ne shotsLeft null)}}
   <p class="line"><label><input type="checkbox" name="spendAmmo" checked>
     {{#if ammo}}{{localize "GMENTOR.Attack.spendAmmo" ammo=ammo.name}}{{else}}{{localize "GMENTOR.Attack.spendShots"}}{{/if}}</label></p>

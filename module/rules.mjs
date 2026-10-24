@@ -623,6 +623,26 @@ export function missByOneLocation(location) {
   return MISS_BY_ONE_TO_TORSO.includes(location) ? "torso" : null;
 }
 
+// Чья СП у локаций, которых нет в LOCATIONS: жизненно важные органы и позвоночник — под бронёй торса (B399),
+// ухо, нос, челюсть — части лица, вены и суставы конечностей — как рука (так же их промах на 1, MISS_BY_ONE)
+const ARMOR_LOCATION = { random: "torso", vitals: "torso", spine: "torso", ear: "face", nose: "face", jaw: "face",
+  neckVein: "neck", limbVein: "arms", bigJoint: "arms", smallJoint: "hands" };
+
+/**
+ * СП цели там, куда целятся, против типа урона: «pi» брони действует на весь колющий (pi-, pi+, pi++).
+ * Случайная локация — СП торса. У крыльев, хвоста и оружия брони персонажа нет — null.
+ * @param {object[]} locations   system.locations цели (locationArmor)
+ * @param {string} aimedAt       Ключ ATTACK_LOCATIONS
+ * @param {string} damageType    Тип урона атаки: "cut", "pi+"
+ */
+export function targetLocationDr(locations, aimedAt, damageType) {
+  const location = ATTACK_LOCATIONS.find(entry => entry.key === aimedAt)?.location;
+  const armor = locations.find(entry => entry.key === (ARMOR_LOCATION[location] ?? location));
+  if ( !armor ) return null;
+  const typeKey = damageType.startsWith("pi") ? "pi" : damageType;
+  return armor.types.find(entry => entry.type === typeKey)?.dr ?? armor.dr;
+}
+
 /** Случайная локация по броску 3d6 (B552), как getRandomLocation в GMentor. */
 export function randomLocation(total) {
   const location = LOCATIONS.find(({ roll }) => roll.split("/").some(part => {

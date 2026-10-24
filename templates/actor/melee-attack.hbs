@@ -12,6 +12,10 @@
     <label class="field"><span class="label">ST</span> <input class="inline-value" type="text" name="minSt" value="{{minSt}}"></label>
     {{#if mode.reach}}<span class="label">Reach</span> <span class="value">{{mode.reach}}</span>{{/if}}
   </p>
+  {{#if target}}
+  <p class="line"><label><input type="checkbox" name="useTarget" checked> {{localize "GMENTOR.Attack.useTarget"}}
+    <span class="value">{{target.name}}</span></label></p>
+  {{/if}}
   <p class="line"><label><input type="checkbox" name="keepAdds"> {{localize "GMENTOR.MeleeAttack.keepAdds"}}</label>
     <span class="note">B269</span></p>
 
