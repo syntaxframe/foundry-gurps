@@ -82,26 +82,35 @@ export default class SuccessRollDialog extends HandlebarsApplicationMixin(Applic
   static async #onSubmit(event, form, formData) {
     const { level, modifier } = this.#values();
     const message = await this.#actor.rollSuccess(this.#label, level, { modifier });
-    this.#showResult(message.rolls[0], level + modifier);
+    showSuccessResult(this.element.querySelector(".roll-results"), message.rolls[0], level + modifier);
     return message;
   }
+}
 
-  /**
-   * Строка результата, как gc-rolled в GMentor: грани кубиков, сумма и исход с запасом.
-   * Новый бросок — сверху, прошлые бледнее (стили .roll-results).
-   */
-  #showResult(roll, target) {
-    const { outcome, margin } = successOutcome(roll.total, target);
-    const result = document.createElement("p");
-    result.className = `roll-result ${outcome}`;
-    result.dataset.tooltipText = new Date().toLocaleTimeString();
-    // ⚀–⚅ идут в Юникоде подряд с U+2680
-    const faces = roll.dice[0].results.map(die => String.fromCodePoint(0x267F + die.result)).join(" ");
-    const outcomeText = `${game.i18n.localize(`GMENTOR.Roll.${outcome}`)} (${margin.signedString()})`;
-    result.innerHTML = `<span class="dice"></span> = <span class="total"></span> <span class="outcome"></span>`;
-    result.querySelector(".dice").textContent = faces;
-    result.querySelector(".total").textContent = roll.total;
-    result.querySelector(".outcome").textContent = outcomeText;
-    this.element.querySelector(".roll-results").prepend(result);
+/**
+ * Строка результата, как gc-rolled в GMentor: грани кубиков, сумма и исход с запасом, ниже пометки.
+ * Новый бросок — сверху, прошлые бледнее (стили .roll-results).
+ * @param {HTMLElement} container  Список результатов окна
+ * @param {Roll} roll
+ * @param {number} target          Эффективный навык
+ * @param {string[]} [notes]       Пометки к исходу
+ */
+export function showSuccessResult(container, roll, target, notes = []) {
+  const { outcome, margin } = successOutcome(roll.total, target);
+  const result = document.createElement("div");
+  result.className = `roll-result ${outcome}`;
+  result.dataset.tooltipText = new Date().toLocaleTimeString();
+  // ⚀–⚅ идут в Юникоде подряд с U+2680
+  const faces = roll.dice[0].results.map(die => String.fromCodePoint(0x267F + die.result)).join(" ");
+  const outcomeText = `${game.i18n.localize(`GMENTOR.Roll.${outcome}`)} (${margin.signedString()})`;
+  result.innerHTML = `<p><span class="dice"></span> = <span class="total"></span> <span class="outcome"></span></p>`;
+  result.querySelector(".dice").textContent = faces;
+  result.querySelector(".total").textContent = roll.total;
+  result.querySelector(".outcome").textContent = outcomeText;
+  for ( const note of notes ) {
+    const line = document.createElement("p");
+    line.textContent = note;
+    result.append(line);
   }
+  container.prepend(result);
 }

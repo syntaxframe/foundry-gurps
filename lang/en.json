@@ -635,6 +635,64 @@
       "attacks": "attacks: {count}",
       "hit": "Hit for {damage} to the {location}"
     },
+    "ActiveDefense": {
+      "title": "Active Defense",
+      "type": {
+        "dodge": "Dodge",
+        "parry": "Parry",
+        "block": "Block"
+      },
+      "levelHint": "Changed the defense? Don't forget to change the level",
+      "level": "Level:",
+      "option": {
+        "firearms": "Attacked with a firearm",
+        "flail": "Attacked with a flail",
+        "nunchaku": "Attacked with nunchaku",
+        "bareOnWeapon": "Parrying an armed attack barehanded (-3)",
+        "stunned": "Defender is stunned (-4)",
+        "sideAttack": "Attack from the side or a \"wraparound\" attack (-2)",
+        "dualWeaponHits": "Dual-Weapon Attack, both hits on one target (-1)",
+        "unseenAttacker": "Defender can't see the attacker (-4) — only after a Hearing-2 roll",
+        "offHand": "Off-hand parry (-2)",
+        "thrownLarge": "Parrying a thrown weapon (-1) — axes, spears, etc.",
+        "thrownSmall": "Parrying a small thrown weapon (-2) — knives, shuriken, etc.",
+        "laserSight": "Attacker uses a laser sight (+1) — if the dot is visible"
+      },
+      "shield": {
+        "0": "No shield",
+        "1": "Small / improvised shield / cloak (DB 1)",
+        "2": "Medium shield / heavy cloak (DB 2)",
+        "3": "Large / force shield (DB 3)",
+        "4": "Magical protection (DB 4)"
+      },
+      "shieldReady": "the shield must be ready",
+      "parryNumber": "Parrying attack no.",
+      "parryNumberEnd": " this turn",
+      "fencing": "Defending with a fencing weapon",
+      "trainedByMaster": "Have Trained by a Master or Weapon Master",
+      "retreat": "Retreat",
+      "drop": "Drop (+3)",
+      "dropNote": "only against ranged attacks",
+      "remember": "Remember to add yourself: a Deceptive Attack or a successful Feint by the foe; Acrobatic Dodge (B375: +2 on success, -2 on failure); Increased All-Out Defense (+2 to one defense only). No parry after Move and Attack.",
+      "poseLabel": "Defender's posture",
+      "pose": {
+        "0": "Standing (0)",
+        "-2": "Kneeling / sitting (-2)",
+        "-3": "Lying / crawling (-3)"
+      },
+      "height": {
+        "-3": "Defender is 5 ft below the attacker (-3)",
+        "-2": "Defender is 4 ft below the attacker (-2)",
+        "-1": "Defender is 3 ft below the attacker (-1)",
+        "0": "Defender and attacker at the same level",
+        "1": "Defender is 3 ft above the attacker (+1)",
+        "2": "Defender is 4 ft above the attacker (+2)",
+        "3": "Defender is 5 ft above the attacker (+3)"
+      },
+      "dodged": "Dodged projectiles: {count}",
+      "dodgedAll": "Dodged all projectiles",
+      "armTarget": "The attacker may choose to hit your arm"
+    },
     "SpellRow": {
       "cost": "cost:",
       "time": "time:"

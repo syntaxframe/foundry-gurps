@@ -5,4 +5,5 @@
     {{#if modifier}}<span class="dim">({{target}} {{numberFormat modifier sign=true}})</span>{{/if}}
   </p>
   <p class="outcome {{outcome}}">{{localize outcomeLabel}} ({{localize "GMENTOR.Roll.Margin"}} {{numberFormat margin sign=true}})</p>
+  {{#each notes}}<p>{{this}}</p>{{/each}}
 </div>

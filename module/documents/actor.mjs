@@ -31,14 +31,16 @@ export default class GMentorActor extends Actor {
    * @param {number} target            Эффективный навык до модификатора
    * @param {object} [options]
    * @param {number} [options.modifier]     Модификатор из окна броска (SuccessRollDialog)
+   * @param {function} [options.notes]      Пометки к исходу: ({outcome, margin}) → строки (окно активной защиты)
    */
-  async rollSuccess(label, target, { modifier = 0 } = {}) {
+  async rollSuccess(label, target, { modifier = 0, notes = () => [] } = {}) {
     const effective = target + modifier;
     const roll = await new Roll("3d6").evaluate();
     const { outcome, margin } = successOutcome(roll.total, effective);
     const content = await foundry.applications.handlebars.renderTemplate(
       "systems/gmentor/templates/chat/success-roll.hbs",
-      { label, target, modifier, effective, outcome, margin, outcomeLabel: `GMENTOR.Roll.${outcome}` }
+      { label, target, modifier, effective, outcome, margin, outcomeLabel: `GMENTOR.Roll.${outcome}`,
+        notes: notes({ outcome, margin }) }
     );
     return roll.toMessage({ speaker: ChatMessage.getSpeaker({ actor: this }), flavor: content });
   }

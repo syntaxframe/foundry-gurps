@@ -1007,10 +1007,14 @@
   padding: 0;
 }
 
-.gmentor .damage-row,
-.gmentor .locations {
+.gmentor .damage-row {
   display: flex;
   flex-wrap: wrap;
+}
+
+/* Локации всегда в один ряд: на узком листе ужимаются, иначе последняя переносится отдельной строкой во всю ширину */
+.gmentor .locations {
+  display: flex;
 }
 
 .gmentor .damage-row {
@@ -1063,14 +1067,23 @@
   flex: 1;
 }
 
+/* Как в GMentor: название сверху, под ним в одну строку бросок слева, СП по центру и штраф попадания справа;
+   СП против отдельных типов урона — ниже */
 .gmentor .location {
-  flex: 1 0 4.5rem;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0.15rem 0.25rem 0.9rem;
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  column-gap: 2px;
+  padding: 0.15rem 3px 1px;
   border-right: 1px solid var(--gm-frame);
+}
+
+.gmentor .loc-name,
+.gmentor .loc-type {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 .gmentor .location:last-child {
@@ -1083,25 +1096,32 @@
 }
 
 .gmentor .loc-dr {
+  grid-row: 2;
+  grid-column: 2;
   font-size: 1.15rem;
   font-weight: normal;
 }
 
 .gmentor .loc-roll,
 .gmentor .loc-hit {
-  position: absolute;
-  bottom: 1px;
+  grid-row: 2;
+  padding-bottom: 2px;
   font-size: 0.6rem;
+  line-height: 1.1;
   color: var(--gm-dim);
 }
 
+/* Руки и ноги — правая и левая сторона в две строки (перевод строки в LOCATIONS), как п./л. в GMentor */
 .gmentor .loc-roll {
-  left: 3px;
+  grid-column: 1;
+  justify-self: start;
+  white-space: pre;
   opacity: 0.7;
 }
 
 .gmentor .loc-hit {
-  right: 3px;
+  grid-column: 3;
+  justify-self: end;
 }
 
 /* Чувства и реакция: плитки бросков, справа итог реакции и список источников */
@@ -1393,6 +1413,13 @@
   font-size: 1.4rem;
 }
 
+/* Кружок и точку радиокнопки Foundry рисует двумя иконками по шрифту самой кнопки: в крупной строке они
+   расходятся, поэтому шрифт кнопки — обычный */
+.gmentor.tool-window .type-line input[type=radio] {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
 /* Поле по ширине значения, как editable-значения GMentor */
 .gmentor.tool-window .inline-value {
   field-sizing: content;
@@ -1479,6 +1506,11 @@
   border-radius: 4px;
   color: var(--gm-bg);
   font-size: 1rem;
+}
+
+/* Строка исхода и пометки под ней (окно активной защиты: «Увернулся от снарядов») */
+.gmentor.success-roll .roll-result p {
+  margin: 0;
 }
 
 .gmentor:is(.success-roll, .attack-window) .roll-result:first-child {

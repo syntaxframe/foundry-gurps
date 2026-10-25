@@ -85,12 +85,12 @@
       {{/each}}
       <span class="spacer"></span>
       {{#each system.defenses}}
-      <a class="tile defense rollable {{#if (lookup @root.temporary type)}}temporary{{/if}}" data-action="roll" data-no-time data-label="{{localize (concat "GMENTOR.Defense." type)}} ({{item.name}})" data-value="{{value}}">
+      <a class="tile defense rollable {{#if (lookup @root.temporary type)}}temporary{{/if}}" data-action="activeDefense" data-defense="{{type}}" data-label="{{localize (concat "GMENTOR.Defense." type)}} ({{item.name}})" data-value="{{value}}">
         <span class="tile-label">{{localize (concat "GMENTOR.Defense." type)}} · {{item.name}}</span>
         <b>{{value}}</b>
       </a>
       {{/each}}
-      <a class="tile defense rollable {{#if temporary.dodge}}temporary{{/if}}" data-action="roll" data-no-time data-label="{{localize "GMENTOR.Dodge"}}" data-value="{{system.dodge}}">
+      <a class="tile defense rollable {{#if temporary.dodge}}temporary{{/if}}" data-action="activeDefense" data-defense="dodge" data-label="{{localize "GMENTOR.Dodge"}}" data-value="{{system.dodge}}">
         <span class="tile-label">{{localize "GMENTOR.Dodge"}}</span>
         <b>{{system.dodge}}</b>
         {{#if system.encumbrance.level}}<span class="tile-note">{{localize "GMENTOR.EncNote"}} −{{system.encumbrance.level}}</span>{{/if}}
@@ -179,11 +179,11 @@
   <th>{{localize "GMENTOR.WeaponField.damage"}}</th>
   {{/inline}}
 
-  {{!-- Парирование или блок режима: бросок, если этим оружием можно защищаться --}}
+  {{!-- Парирование или блок режима: окно активной защиты, если этим оружием можно защищаться --}}
   {{#*inline "defenseCell"}}
   <td>
     {{#if result}}
-    <a class="rollable" data-action="roll" data-no-time data-label="{{localize (concat "GMENTOR.Defense." defense)}} ({{item.name}})" data-value="{{result.value}}">{{result.value}}{{result.note}}</a>
+    <a class="rollable" data-action="activeDefense" data-defense="{{defense}}" data-label="{{localize (concat "GMENTOR.Defense." defense)}} ({{item.name}})" data-value="{{result.value}}">{{result.value}}{{result.note}}</a>
     {{else}}—{{/if}}
   </td>
   {{/inline}}

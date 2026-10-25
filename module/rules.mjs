@@ -47,7 +47,7 @@ export function addDamage(damage, add) {
 
 /**
  * Локации попадания (B552): бросок 3d6 при случайном попадании, штраф на прицельный удар, естественная СП.
- * Для рук и ног бросок указан как «правая / левая».
+ * Для рук и ног бросок — правая и левая сторона через перевод строки: на листе они в две строки, как в GMentor.
  */
 export const LOCATIONS = [
   { key: "skull", roll: "3–4", toHit: -7, dr: 2 },
@@ -56,9 +56,9 @@ export const LOCATIONS = [
   { key: "neck", roll: "17–18", toHit: -5, dr: 0 },
   { key: "torso", roll: "9–10", toHit: 0, dr: 0 },
   { key: "groin", roll: "11", toHit: -3, dr: 0 },
-  { key: "arms", roll: "8 / 12", toHit: -2, dr: 0 },
+  { key: "arms", roll: "8\n12", toHit: -2, dr: 0 },
   { key: "hands", roll: "15", toHit: -4, dr: 0 },
-  { key: "legs", roll: "6–7 / 13–14", toHit: -2, dr: 0 },
+  { key: "legs", roll: "6–7\n13–14", toHit: -2, dr: 0 },
   { key: "feet", roll: "16", toHit: -4, dr: 0 }
 ];
 
@@ -869,6 +869,80 @@ export function meleeDamage(text, { adds = 0, convertDice = true, armorGaps = fa
   }
   if ( armorGaps ) record.divisor *= 2;
   return damageRecordText(record);
+}
+
+/* -------------------------------------------- */
+/*  Активная защита                             */
+/* -------------------------------------------- */
+
+export const ACTIVE_DEFENSES = ["dodge", "parry", "block"];
+
+/**
+ * Флажки окна активной защиты с постоянным модификатором (B374, B549), как флажки с value в toolActiveDefence
+ * GMentor. Флажки из PARRY_ONLY_OPTIONS действуют только при парировании.
+ */
+export const DEFENSE_OPTIONS = { stunned: -4, sideAttack: -2, dualWeaponHits: -1, unseenAttacker: -4,
+  offHand: -2, thrownLarge: -1, thrownSmall: -2, laserSight: 1 };
+
+export const PARRY_ONLY_OPTIONS = ["bareOnWeapon", "offHand", "thrownLarge", "thrownSmall"];
+
+/**
+ * Итоговый уровень активной защиты, как toolActiveDefence в GMentor (B374–B377, B549).
+ * @param {object} values
+ * @param {string} values.defense          dodge | parry | block
+ * @param {number} values.level            Уровень защиты без щита
+ * @param {number} values.modifier         Прочие модификаторы
+ * @param {number} values.shieldDb         DB щита; против огнестрельного не действует (так считает GMentor)
+ * @param {boolean} values.firearms        Стреляли из огнестрельного: защищаться можно только уклонением
+ * @param {boolean} values.flail           Атака цепом (B405): парирование −4, блок −2
+ * @param {boolean} values.nunchaku        Атака нунчаками: парирование −2, блок −1
+ * @param {boolean} values.bareOnWeapon    Парирование голыми руками атаки оружием (B376): −3
+ * @param {number} values.parryNumber      Которое парирование в раунде (B376): −4 за каждое после первого,
+ *                                         вдвое меньше фехтовальным оружием и вдвое меньше с Учеником мастера
+ * @param {boolean} values.fencing
+ * @param {boolean} values.trainedByMaster
+ * @param {boolean} values.retreat         Отступление (B377): уклонение +3, остальное +1
+ * @param {boolean} values.drop            Падение (B377): уклонение +3, только против дистанционной атаки
+ * @param {number} values.pose             Поза защищающегося (B551)
+ * @param {number} values.height           Разница высот (B402)
+ * @returns {{target: number, modifiers: {key: string, value: number}[]}}  Ненулевые модификаторы
+ */
+export function activeDefenseTarget({ defense, level, modifier = 0, shieldDb = 0, firearms = false, flail = false,
+  nunchaku = false, bareOnWeapon = false, parryNumber = 1, fencing = false, trainedByMaster = false, retreat = false,
+  drop = false, pose = 0, height = 0, ...options }) {
+  const parry = defense === "parry";
+  const block = defense === "block";
+  const dodge = defense === "dodge";
+  let multipleParry = -4 * Math.max(parryNumber - 1, 0);
+  if ( fencing ) multipleParry /= 2;
+  if ( trainedByMaster ) multipleParry /= 2;
+
+  const modifiers = [
+    { key: "modifier", value: modifier },
+    { key: "shield", value: firearms ? 0 : shieldDb },
+    { key: "flail", value: !flail ? 0 : parry ? -4 : block ? -2 : 0 },
+    { key: "nunchaku", value: !nunchaku ? 0 : parry ? -2 : block ? -1 : 0 },
+    { key: "bareOnWeapon", value: (parry && bareOnWeapon) ? -3 : 0 },
+    { key: "multipleParry", value: parry ? multipleParry : 0 },
+    { key: "retreat", value: !retreat ? 0 : dodge ? 3 : 1 },
+    { key: "drop", value: (dodge && drop) ? 3 : 0 },
+    { key: "pose", value: pose },
+    { key: "height", value: height }
+  ];
+  for ( const [key, value] of Object.entries(DEFENSE_OPTIONS) ) {
+    if ( options[key] && (parry || !PARRY_ONLY_OPTIONS.includes(key)) ) modifiers.push({ key, value });
+  }
+  const applied = modifiers.filter(({ value }) => value !== 0);
+  return { target: level + applied.reduce((sum, { value }) => sum + value, 0), modifiers: applied };
+}
+
+/**
+ * От скольких снарядов увернулся (B375): от одного и ещё по одному за каждое очко запаса, критический успех —
+ * от всех ("all"), провал — 0. Как в GMentor, число выпущенных не ограничивает.
+ */
+export function dodgedProjectiles(outcome, margin) {
+  if ( outcome === "critSuccess" ) return "all";
+  return (outcome === "success") ? 1 + margin : 0;
 }
 
 /** Сколько снарядов попало (B373): 1 + запас успеха / отдача, но не больше выпущенных. */

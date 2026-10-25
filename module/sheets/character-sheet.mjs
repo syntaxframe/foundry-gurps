@@ -9,6 +9,7 @@ import RangedAttackDialog from "./ranged-attack.mjs";
 import SpellCastDialog from "./spell-cast.mjs";
 import DamageRollDialog from "./damage-roll.mjs";
 import SuccessRollDialog from "./success-roll.mjs";
+import ActiveDefenseDialog from "./active-defense.mjs";
 import { setupItemData } from "./item-setup.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -61,6 +62,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     form: { submitOnChange: true },
     actions: {
       roll: CharacterSheet.#onRoll,
+      activeDefense: CharacterSheet.#onActiveDefense,
       castSpell: CharacterSheet.#onCastSpell,
       meleeAttack: CharacterSheet.#onMeleeAttack,
       rangedAttack: CharacterSheet.#onRangedAttack,
@@ -592,13 +594,20 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   /**
    * Бросок 3d6 на успех: data-value — значение, data-label — подпись, data-no-time — без потраченного времени
-   * (самоконтроль, защиты). Окно броска, как в GMentor; с Shift — простой бросок без окна.
+   * (самоконтроль). Окно броска, как в GMentor; с Shift — простой бросок без окна.
    */
   static #onRoll(event, target) {
     const { label, value } = target.dataset;
     if ( event.shiftKey ) return this.actor.rollSuccess(label, Number(value));
     const timeSpent = !("noTime" in target.dataset);
     return new SuccessRollDialog({ actor: this.actor, label, value: Number(value), timeSpent }).render({ force: true });
+  }
+
+  /** Уклонение, парирование или блок: окно активной защиты, как в GMentor; с Shift — простой бросок без окна. */
+  static #onActiveDefense(event, target) {
+    const { defense, label, value } = target.dataset;
+    if ( event.shiftKey ) return this.actor.rollSuccess(label, Number(value));
+    return new ActiveDefenseDialog({ actor: this.actor, defense, label, value: Number(value) }).render({ force: true });
   }
 
   /** Уровень заклинания: окно сотворения, как в GMentor; с Shift — простой бросок без окна. */

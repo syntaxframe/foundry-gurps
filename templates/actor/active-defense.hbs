@@ -1,0 +1,62 @@
+{{!-- Окно активной защиты как инструмент GMentor (toolActiveDefence): выбор защиты, фразы с синими значениями,
+     дополнительные модификаторы раскрываются, кнопка броска с итогом --}}
+<div class="tool-content">
+  <header class="tool-header">
+    <h2><i class="fa-solid fa-shield-halved" inert></i> {{localize "GMENTOR.ActiveDefense.title"}}</h2>
+    <span class="book-ref">B374</span>
+  </header>
+
+  <p class="type-line">
+    {{#each defenses}}
+    <label data-defense="{{this}}"><input type="radio" name="defense" value="{{this}}" {{#if (eq this @root.defense)}}checked{{/if}}>
+      {{localize (concat "GMENTOR.ActiveDefense.type." this)}}</label>
+    {{/each}}
+  </p>
+  <p class="note">{{localize "GMENTOR.ActiveDefense.levelHint"}}</p>
+
+  <p class="line"><label class="field">{{localize "GMENTOR.ActiveDefense.level"}}
+    <input class="inline-value big" type="number" name="level" value="{{level}}"></label></p>
+
+  {{#each attackOptions}}
+  <p class="line"><label><input type="checkbox" name="{{this}}"> {{localize (concat "GMENTOR.ActiveDefense.option." this)}}</label></p>
+  {{/each}}
+  <p class="line parry-only"><label><input type="checkbox" name="bareOnWeapon"> {{localize "GMENTOR.ActiveDefense.option.bareOnWeapon"}}</label></p>
+
+  <p class="line shield-settings"><select class="inline-value" name="shieldDb">{{selectOptions shieldChoices selected=shieldDb localize=true}}</select>
+    <span class="note">{{localize "GMENTOR.ActiveDefense.shieldReady"}}</span></p>
+
+  <div class="parry-only">
+    <p class="line"><label class="field">{{localize "GMENTOR.ActiveDefense.parryNumber"}}
+      <input class="inline-value" type="number" name="parryNumber" value="1" min="1">{{localize "GMENTOR.ActiveDefense.parryNumberEnd"}}</label></p>
+    <p class="line indent multiple-parry"><label><input type="checkbox" name="fencing"> {{localize "GMENTOR.ActiveDefense.fencing"}}</label></p>
+    <p class="line indent multiple-parry"><label><input type="checkbox" name="trainedByMaster"> {{localize "GMENTOR.ActiveDefense.trainedByMaster"}}</label></p>
+  </div>
+
+  <p class="line"><label><input type="checkbox" name="retreat"> {{localize "GMENTOR.ActiveDefense.retreat"}}
+    (<span class="retreat-value"></span>) <span class="note">Retreat</span></label></p>
+  <p class="line dodge-only"><label><input type="checkbox" name="drop"> {{localize "GMENTOR.ActiveDefense.drop"}}
+    <span class="note">{{localize "GMENTOR.ActiveDefense.dropNote"}}</span></label></p>
+  <p class="line"><label class="field">{{localize "GMENTOR.Attack.modifier"}} <input class="inline-value big" type="number" name="modifier" value="0"></label></p>
+
+  <div class="note-block">
+    <p>{{localize "GMENTOR.ActiveDefense.remember"}}</p>
+  </div>
+
+  <details class="more-modifiers">
+    <summary>{{localize "GMENTOR.Attack.more"}} <span class="book-ref">B549</span></summary>
+    <p class="line"><select class="inline-value" name="height">{{selectOptions heightChoices selected="0" localize=true}}</select></p>
+    <p class="line"><label class="field">{{localize "GMENTOR.ActiveDefense.poseLabel"}}
+      <select class="inline-value" name="pose">{{selectOptions poseChoices localize=true}}</select></label></p>
+    {{#each moreOptions}}
+    <p class="line {{#if parryOnly}}parry-only{{/if}}"><label><input type="checkbox" name="{{key}}">
+      {{localize (concat "GMENTOR.ActiveDefense.option." key)}}</label></p>
+    {{/each}}
+  </details>
+
+  <div class="effective-roll">
+    <span>{{localize "GMENTOR.SpellCast.effective"}}</span>
+    <button type="submit" class="skill-roll"><i class="fa-solid fa-dice" inert></i> <span data-preview="target"></span></button>
+  </div>
+  {{!-- Результаты бросков, новый сверху (заполняет showSuccessResult) --}}
+  <div class="roll-results"></div>
+</div>
