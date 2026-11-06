@@ -1,6 +1,7 @@
 {{!--
   Эффекты черты, модификатора или снаряжения. Параметры: features — массив, prefix — имя поля в форме
-  ("system.features", "system.modifiers.2.features"), modifier — индекс модификатора или пусто для самой черты.
+  ("system.features", "system.modifiers.2.features"), modifier — индекс модификатора или пусто для самой черты,
+  component — индекс части составной черты или пусто.
 --}}
 <ul class="features">
   {{#each features}}
@@ -42,7 +43,7 @@
       <input type="checkbox" name="{{../prefix}}.{{@index}}.perLevel" {{checked perLevel}}> {{localize "GMENTOR.PerLevel"}}
     </label>
     {{/if}}
-    <a data-action="deleteFeature" data-modifier="{{../modifier}}" data-index="{{@index}}" data-tooltip="GMENTOR.Delete">
+    <a data-action="deleteFeature" data-component="{{../component}}" data-modifier="{{../modifier}}" data-index="{{@index}}" data-tooltip="GMENTOR.Delete">
       <i class="fa-solid fa-trash" inert></i></a>
   </li>
   {{/each}}
@@ -50,7 +51,7 @@
 <p class="feature-add">
   {{localize "GMENTOR.AddFeature"}}:
   {{#each @root.featureTypes}}
-  <a data-action="addFeature" data-modifier="{{../modifier}}" data-type="{{this}}">
+  <a data-action="addFeature" data-component="{{../component}}" data-modifier="{{../modifier}}" data-type="{{this}}">
     <i class="fa-solid fa-plus" inert></i> {{localize (concat "GMENTOR.FeatureType." this)}}</a>
   {{/each}}
 </p>

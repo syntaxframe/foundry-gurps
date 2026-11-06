@@ -10,6 +10,7 @@
           <span class="item-cost">{{item.system.cost}}</span>
           <div class="item-details">
             {{#if item.system.notes}}<span class="item-notes">{{item.system.notes}}</span>{{/if}}
+            {{#if parts}}<span class="item-parts">{{parts}}</span>{{/if}}
             {{#if effects}}<span class="item-effects">{{effects}}</span>{{/if}}
             {{#if item.system.pointsPerLevel}}
             <label>{{localize "GMENTOR.LevelLabel"}}

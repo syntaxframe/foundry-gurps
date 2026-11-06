@@ -941,6 +941,54 @@
   gap: 0.25rem;
 }
 
+/* Части составной черты: строка с названием, уровнем, модификаторами и ценой; раскрытая — поля черты под ней */
+.gmentor.item .components {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gmentor.item .component {
+  border-bottom: 1px solid var(--gm-line);
+  padding: 0.25rem 0;
+}
+
+.gmentor.item .component-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gmentor.item .component-row > input[type="text"] {
+  flex: 1 1 12rem;
+}
+
+.gmentor.item .component-levels {
+  white-space: nowrap;
+}
+
+.gmentor.item .component-levels input {
+  width: 3.5rem;
+}
+
+.gmentor.item .component-modifiers {
+  flex: 1 1 auto;
+  color: var(--gm-dim);
+  font-size: 0.8rem;
+}
+
+.gmentor.item .component-cost {
+  color: var(--gm-accent);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.gmentor.item .component-details {
+  margin: 0.25rem 0 0.5rem 1rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--gm-line);
+}
+
 /* Эффекты: строка на эффект, поля типа тянутся, величина и «за уровень» справа */
 .gmentor.item .features {
   margin: 0.25rem 0 0;
@@ -1828,6 +1876,32 @@
   overflow-y: auto;
 }
 
+/* Составная черта: окно может быть длинным, части рамками, длинные списки модификаторов прокручиваются */
+.gmentor.item-setup .window-content {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.gmentor.item-setup .setup-component {
+  border: 1px solid var(--gm-line);
+  margin: 0 0 0.5rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.gmentor.item-setup .setup-component legend {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.gmentor.item-setup .setup-component .setup-modifiers {
+  max-height: 12rem;
+}
+
+.gmentor.item-setup .setup-component:has(legend input:not(:checked)) .setup-modifiers {
+  opacity: 0.4;
+}
+
 .gmentor.item-setup .setup-modifier {
   display: grid;
   grid-template-columns: auto 1fr auto 3.5rem;
@@ -2099,4 +2173,9 @@
   max-width: 24rem;
   text-align: left;
   white-space: pre-line;
+}
+
+/* Состав составной черты в строке листа */
+.gmentor .item-parts {
+  color: var(--gm-soft);
 }

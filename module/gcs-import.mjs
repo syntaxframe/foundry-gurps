@@ -30,6 +30,7 @@ const DR_LOCATIONS_GCS = {
 const COMPARES = { any: "is anything", is_anything: "is anything", is: "is", is_not: "is not", contains: "contains",
   does_not_contain: "does not contain", starts_with: "starts with" };
 
+// В файлах GCS 5 — «levels only», в документации формата — «levels_only»
 const AFFECTS = { total: "total", base_only: "base", levels_only: "levels" };
 const SKILL_ATTRIBUTES = ["st", "dx", "iq", "ht", "will", "per"];
 
@@ -71,14 +72,28 @@ export function convertGcsCharacter(gcs) {
 
 /**
  * Группы («Группа / Недостатки») у нас не переносятся: на листе свои списки по типам. Составная черта
- * (meta_trait) — не группа, а одна черта из нескольких (см. convertMetaTrait).
+ * не группа, а одна черта из нескольких (см. isCompositeTrait, convertCompositeTrait).
  */
 function flatten(list = []) {
   return list.flatMap(entry => isGroup(entry) ? flatten(entry.children) : [entry]);
 }
 
 function isGroup(entry) {
-  return !!entry.children && (entry.container_type !== "meta_trait");
+  return !!entry.children && !isCompositeTrait(entry);
+}
+
+/**
+ * Составная черта: meta_trait GCS («Подкожная броня») или обычная группа со своей заметкой и только чертами
+ * внутри — так в Shadowrun записаны протезы («Бионическая нога»: «4600$ Обычная», Повышенное перемещение
+ * и Сопротивление вреду). Так же выглядят и списки на выбор («ХРАЗ»: Mk1, Mk2, Mk3): их части выбирают
+ * при добавлении на лист (см. setupItemData). Разделы («Преимущества», «Протезы / Общие») заметок не имеют.
+ */
+function isCompositeTrait(entry) {
+  if ( !entry.children?.length ) return false;
+  if ( entry.container_type === "meta_trait" ) return true;
+  const group = !entry.container_type || (entry.container_type === "group");
+  const notes = String(entry.local_notes ?? entry.notes ?? "").trim();
+  return group && !!notes && entry.children.every(child => !child.children);
 }
 
 /**
@@ -130,7 +145,7 @@ function convertSection(type, list, convert) {
       }
       // Составные черты Shadowrun лежат вне разделов, а раздел записан в названии: «Протезы / Общие / Подкожная броня».
       // У остальных записей косая черта — часть названия: «Аркана / Тауматургия»
-      const parts = entry.container_type === "meta_trait" ? pathParts(name) : [name];
+      const parts = isCompositeTrait(entry) ? pathParts(name) : [name];
       const own = { ...entry, [nameField]: parts.pop() };
       const folder = tree.path(parts, place);
       items.push(...convert(own).filter(Boolean).map(item => ({ ...item, folder: folder?._id ?? null })));
@@ -291,7 +306,7 @@ function convertTrait(trait, skipped) {
     skipped.add("выключенная черта");
     return null;
   }
-  if ( trait.container_type === "meta_trait" ) return convertMetaTrait(trait, skipped);
+  if ( isCompositeTrait(trait) ) return convertCompositeTrait(trait, skipped);
   if ( trait.cr_adj ) skipped.add(`эффект самоконтроля (cr_adj «${trait.cr_adj}»)`);
   for ( const key of ["weapons", "prereqs"] ) {
     if ( trait[key] ) skipped.add(`черта: ${key}`);
@@ -319,39 +334,37 @@ function convertTrait(trait, skipped) {
 }
 
 /**
- * Составная черта GCS (meta_trait: «Подкожная броня» из двух «Сопротивлений вреду» с модификаторами) — одна
- * черта: цена из расчёта GCS, эффекты всех частей с уже умноженным уровнем, состав — в описании.
- * Уровни и модификаторы частей на листе не меняются: для этого черты нужно добавить по отдельности.
+ * Составная черта (см. isCompositeTrait) — одна черта с частями: каждая часть переводится как обычная черта
+ * и сохраняет уровни, модификаторы и эффекты. Модификаторы самой группы остаются у черты.
  */
-function convertMetaTrait(trait, skipped) {
-  const parts = flatten(trait.children).map(child => convertTrait(child, skipped)).filter(Boolean);
-  const features = parts.flatMap(({ system }) => {
-    const enabled = system.modifiers.filter(modifier => modifier.enabled);
-    return [system.features, ...enabled.map(modifier => modifier.features)].flat()
-      .map(feature => feature.perLevel ? { ...feature, amount: feature.amount * system.levels, perLevel: false } : feature);
-  });
-  const partText = ({ name, system }) => {
-    const levels = system.levels ? ` ${system.levels}` : "";
-    const modifiers = system.modifiers.filter(modifier => modifier.enabled).map(modifier => modifier.name);
-    return `<li>${escapeHtml(name + levels)}${modifiers.length ? ` (${escapeHtml(modifiers.join("; "))})` : ""}</li>`;
-  };
-  const name = replaced(trait.name, trait.replacements);
-  const cost = trait.calc?.points ?? 0;
-  const { notes, description } = notesParts(replaced(trait.local_notes ?? trait.notes, trait.replacements));
+function convertCompositeTrait(trait, skipped) {
+  const replacements = trait.replacements;
+  const name = replaced(trait.name, replacements);
+  const components = flatten(trait.children).map(child => convertTrait(child, skipped)).filter(Boolean)
+    .map(({ name, system }) => {
+      const { description, quirk, ...fields } = system;
+      if ( description ) fields.notes = [fields.notes, stripTags(description)].filter(Boolean).join(" ");
+      return { name, ...fields };
+    });
   return {
     type: "advantage",
     name,
     lookup: name,
     system: {
       reference: trait.reference ?? "",
-      description: `${description}<ul>${parts.map(partText).join("")}</ul>`,
-      notes,
-      basePoints: cost,
-      quirk: cost === -1,
-      modifiers: [],
-      features
+      ...notesParts(replaced(trait.local_notes ?? trait.notes, replacements)),
+      quirk: trait.calc?.points === -1,
+      modifiers: flatten(trait.modifiers).map(modifier => convertTraitModifier(modifier, replacements, skipped)),
+      features: [],
+      components
     }
   };
+}
+
+/** Текст без разметки: длинная заметка части, которую notesParts увёл в описание, возвращается в пометку. */
+function stripTags(html) {
+  return html.replace(/<\/p><p>/g, " ").replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 /** cost_adj: "-5" — очки, "x0.5" — множитель, "+50%" — проценты; levels — модификатор с уровнями. */
@@ -367,7 +380,7 @@ function convertTraitModifier(modifier, replacements, skipped) {
     enabled: !modifier.disabled,
     costType,
     value: parseFloat(cost.replace(/^[x×+]/i, "")) || 0,
-    affects: AFFECTS[modifier.affects] ?? "total",
+    affects: AFFECTS[String(modifier.affects ?? "").replace(/ /g, "_")] ?? "total",
     levels: Math.max(1, Math.floor(modifier.levels ?? 1)),
     group: "",
     features: convertFeatures(modifier.features, replacements, skipped)
@@ -702,7 +715,8 @@ export async function importGcsCharacter(actor, gcs) {
  * см. хук renderCompendiumDirectory).
  * @param {object} gcs  Разобранный JSON файла
  * @param {string} label  Название библиотеки
- * @returns {Promise<{reason: string, count: number}[]>}  Что не перенесено
+ * @returns {Promise<{skipped: {reason: string, count: number}[], summary: string[]}>}  Что не перенесено и сводка
+ *   по компендиумам: предметов, папок, сколько дополнено из системной библиотеки
  */
 export async function importGcsLibrary(gcs, label) {
   const { libraries, description, portrait, skipped } = convertGcsLibrary(gcs);
@@ -711,10 +725,10 @@ export async function importGcsLibrary(gcs, label) {
   const banner = portrait ? await uploadImage(`worlds/${game.world.id}/libraries`, fileName, portrait) : null;
   const folder = await compendiumFolder(label);
 
-  const notFound = [];
+  const summary = [];
   for ( const library of libraries ) {
-    const { prepared, missing } = await withLibraryData(library.items);
-    notFound.push(...missing);
+    // Записи, которых нет в системной библиотеке GMentor (черты сеттинга), — не потеря: в сводке только число найденных
+    const { prepared, matched } = await withLibraryData(library.items);
     const typeLabel = game.i18n.localize(`GMENTOR.Import.folder.${library.type}`);
     const pack = await foundry.documents.collections.CompendiumCollection.createCompendium({
       type: "Item",
@@ -724,8 +738,11 @@ export async function importGcsLibrary(gcs, label) {
     });
     await pack.setFolder(folder);
     await fillPack(pack, library.folders, prepared);
+    summary.push(game.i18n.format("GMENTOR.Import.librarySummary", {
+      type: typeLabel, items: prepared.length, folders: library.folders.length, matched
+    }));
   }
-  return [...skipped, ...mergeReports(notFound)];
+  return { skipped, summary };
 }
 
 /** Папки и предметы в новом компендиуме. */
@@ -740,13 +757,6 @@ async function fillPack(pack, folders, items) {
   for ( let start = 0; start < items.length; start += 500 ) {
     await Item.implementation.createDocuments(items.slice(start, start + 500), { pack: pack.collection });
   }
-}
-
-/** Отчёты нескольких библиотек: одинаковые причины складываются. */
-function mergeReports(entries) {
-  const counts = new Map();
-  for ( const { reason, count } of entries ) counts.set(reason, (counts.get(reason) ?? 0) + count);
-  return [...counts].map(([reason, count]) => ({ reason, count }));
 }
 
 /**
@@ -793,7 +803,7 @@ async function withLibraryData(items) {
   const missing = notFound.entries.map(({ reason, count }) => ({
     reason: game.i18n.format("GMENTOR.Import.notInLibrary", { type: reason }), count
   }));
-  return { prepared, missing };
+  return { prepared, missing, matched: matches.size };
 }
 
 /* -------------------------------------------- */
@@ -851,17 +861,20 @@ async function readGcsFile() {
 
 /** Импорт с окном итога: что не перенесено. */
 async function runImport(task, doneKey) {
-  let skipped;
+  let result;
   try {
-    skipped = await task();
+    result = await task();
   } catch ( error ) {
     console.error(error);
     return ui.notifications.error("GMENTOR.Import.notGcs", { localize: true });
   }
+  // Импорт персонажа возвращает только отчёт, импорт библиотеки — ещё и сводку по компендиумам
+  const { skipped, summary = [] } = Array.isArray(result) ? { skipped: result } : result;
   const escape = foundry.utils.escapeHTML;
-  const list = skipped.map(({ reason, count }) => `<li>${count} × ${escape(reason)}</li>`).join("");
-  const content = `<p>${game.i18n.localize(doneKey)}</p>`
-    + (list ? `<p>${game.i18n.localize("GMENTOR.Import.skipped")}</p><ul>${list}</ul>` : "");
+  const listOf = lines => lines.length ? `<ul>${lines.map(line => `<li>${escape(line)}</li>`).join("")}</ul>` : "";
+  const skippedList = listOf(skipped.map(({ reason, count }) => `${count} × ${reason}`));
+  const content = `<p>${game.i18n.localize(doneKey)}</p>${listOf(summary)}`
+    + (skippedList ? `<p>${game.i18n.localize("GMENTOR.Import.skipped")}</p>${skippedList}` : "");
   return foundry.applications.api.DialogV2.prompt({ window: { title: "GMENTOR.Import.title" }, content });
 }
 

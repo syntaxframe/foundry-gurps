@@ -188,6 +188,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       item,
       stat: this.#learnedStat(item),
       effects: (type === "advantage") ? this.#traitEffects(item) : "",
+      parts: (type === "advantage") ? componentsText(item.system.components) : "",
       bonusHint: this.#bonusHint(item),
       ...((type === "spell") ? this.#spellRow(item) : {}),
       description: showDescriptions && item.system.description
@@ -894,4 +895,16 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** Русские названия предметов библиотек для подсказок требований (#loadLibraryNames). */
   #libraryNames = new Map();
+}
+
+/**
+ * Состав составной черты для строки на листе: «Повышенное перемещение 2; Сопротивление вреду 5 (Только одна нога:
+ * левая)». Уровень — у частей с ценой за уровень, модификаторы — включённые.
+ */
+function componentsText(components) {
+  return components.map(component => {
+    const levels = component.pointsPerLevel ? ` ${component.levels}` : "";
+    const modifiers = component.modifiers.filter(m => m.enabled).map(m => m.notes ? `${m.name}: ${m.notes}` : m.name);
+    return `${component.name}${levels}${modifiers.length ? ` (${modifiers.join(", ")})` : ""}`;
+  }).join("; ");
 }

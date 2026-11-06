@@ -1,0 +1,107 @@
+{{!--
+  Цена, модификаторы и эффекты черты или части составной черты. Параметр trait — подготовленные данные
+  (GMentorItemSheet#traitView): prefix — имя поля в форме ("system", "system.components.1"), component — индекс
+  части или пусто для самой черты, modifierRows — модификаторы с index, field (имя в форме), component и expanded.
+--}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.TraitNotes"}}</label>
+  <input type="text" name="{{trait.prefix}}.notes" value="{{trait.notes}}">
+</div>
+{{#if trait.isComponent}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.Reference"}}</label>
+  <input type="text" name="{{trait.prefix}}.reference" value="{{trait.reference}}">
+</div>
+{{/if}}
+{{!-- У составной черты цена — в частях, свои поля цены показываем, только если они заполнены --}}
+{{#if trait.showCost}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.BasePoints"}}</label>
+  <input type="number" name="{{trait.prefix}}.basePoints" value="{{trait.basePoints}}">
+</div>
+<div class="form-group">
+  <label>{{localize "GMENTOR.PointsPerLevel"}}</label>
+  <input type="number" name="{{trait.prefix}}.pointsPerLevel" value="{{trait.pointsPerLevel}}">
+</div>
+{{!-- У части с ценой за уровень уровень — в её строке --}}
+{{#if trait.showLevels}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.Levels"}}</label>
+  <input type="number" name="{{trait.prefix}}.levels" value="{{trait.levels}}" min="0">
+</div>
+{{/if}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.SelfControl"}}</label>
+  <select name="{{trait.prefix}}.cr" data-dtype="Number">{{selectOptions @root.choices.cr selected=trait.cr}}</select>
+</div>
+{{/if}}
+{{#unless trait.isComponent}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.Quirk"}}</label>
+  <input type="checkbox" name="{{trait.prefix}}.quirk" {{checked trait.quirk}}>
+</div>
+{{/unless}}
+{{#if trait.showCost}}
+<div class="form-group">
+  <label>{{localize "GMENTOR.RoundDown"}}</label>
+  <input type="checkbox" name="{{trait.prefix}}.roundDown" {{checked trait.roundDown}}>
+</div>
+{{/if}}
+
+<h4>
+  {{localize "GMENTOR.Modifiers"}}
+  <a data-action="addModifier" data-component="{{trait.component}}" data-tooltip="GMENTOR.Add"><i class="fa-solid fa-plus" inert></i></a>
+</h4>
+<table class="modifiers">
+  {{#if trait.modifierRows.length}}
+  <tr>
+    <th></th>
+    <th>{{localize "Name"}}</th>
+    <th colspan="2">{{localize "GMENTOR.Cost"}}</th>
+    <th>{{localize "GMENTOR.Affects.label"}}</th>
+    <th data-tooltip="GMENTOR.ModifierLevelsHint">{{localize "GMENTOR.ModifierLevels"}}</th>
+    <th data-tooltip="GMENTOR.ModifierGroupHint">{{localize "GMENTOR.ModifierGroup"}}</th>
+    <th></th>
+    <th></th>
+  </tr>
+  {{/if}}
+  {{#each trait.modifierRows as |modifier|}}
+  <tr>
+    <td><input type="checkbox" name="{{modifier.field}}.enabled" {{checked modifier.enabled}}></td>
+    <td><input type="text" name="{{modifier.field}}.name" value="{{modifier.name}}" placeholder="{{localize "Name"}}"
+      {{#if modifier.notes}}data-tooltip-text="{{modifier.notes}}"{{/if}}></td>
+    <td class="number"><input type="number" name="{{modifier.field}}.value" value="{{modifier.value}}" step="any"></td>
+    <td class="cost-type"><select name="{{modifier.field}}.costType">{{selectOptions @root.choices.costType selected=modifier.costType localize=true}}</select></td>
+    <td><select name="{{modifier.field}}.affects">{{selectOptions @root.choices.affects selected=modifier.affects localize=true}}</select></td>
+    <td class="number"><input type="number" name="{{modifier.field}}.levels" value="{{modifier.levels}}" min="1"></td>
+    <td class="group"><input type="text" name="{{modifier.field}}.group" value="{{modifier.group}}"></td>
+    <td>
+      {{!-- Пометка, ссылка и эффекты модификатора — в раскрывающейся строке под ним --}}
+      <a class="modifier-toggle" data-action="toggleModifier" data-component="{{modifier.component}}" data-index="{{modifier.index}}"
+        data-tooltip="GMENTOR.ModifierDetails">
+        <i class="fa-solid {{#if modifier.expanded}}fa-chevron-up{{else}}fa-chevron-down{{/if}}" inert></i>
+        {{#if modifier.features.length}}<span class="feature-count">{{modifier.features.length}}</span>{{/if}}
+      </a>
+    </td>
+    <td><a data-action="deleteModifier" data-component="{{modifier.component}}" data-index="{{modifier.index}}">
+      <i class="fa-solid fa-trash" inert></i></a></td>
+  </tr>
+  {{#if modifier.expanded}}
+  <tr class="modifier-details">
+    <td></td>
+    <td colspan="8">
+      <div class="modifier-fields">
+        <input type="text" name="{{modifier.field}}.notes" value="{{modifier.notes}}" placeholder="{{localize "GMENTOR.TraitNotes"}}">
+        <input type="text" name="{{modifier.field}}.reference" value="{{modifier.reference}}" placeholder="{{localize "GMENTOR.Reference"}}">
+      </div>
+      {{> "systems/gmentor/templates/item/features.hbs" features=modifier.features prefix=(concat modifier.field ".features")
+        modifier=modifier.index component=modifier.component}}
+    </td>
+  </tr>
+  {{/if}}
+  {{/each}}
+</table>
+
+<h4 data-tooltip="GMENTOR.FeaturesHint">{{localize "GMENTOR.Features"}}</h4>
+{{> "systems/gmentor/templates/item/features.hbs" features=trait.features prefix=(concat trait.prefix ".features")
+  modifier="" component=trait.component}}

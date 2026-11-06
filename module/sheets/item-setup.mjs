@@ -27,23 +27,25 @@ export async function setupItemData(data) {
 /*  Модификаторы и самоконтроль                 */
 /* -------------------------------------------- */
 
-/** Диалог выбора модификаторов и самоконтроля. Черта без того и другого добавляется без вопросов. */
+/**
+ * Диалог выбора модификаторов и самоконтроля. Черта без того и другого добавляется без вопросов.
+ * У составной черты ещё и части: каждую можно не брать («Созвездия» — список на выбор), модификаторы части —
+ * под ней.
+ */
 async function askModifiers(data) {
   const system = data.system;
-  if ( !system.modifiers.length && !system.cr ) return true;
-  let previousGroup;
-  const modifiers = system.modifiers.map((modifier, index) => {
-    // Между группами — разделитель, как перенос строки в окне GMentor
-    const separated = (index > 0) && (modifier.group !== previousGroup);
-    previousGroup = modifier.group;
-    return {
-      ...modifier, index, separated,
-      cost: modifierCostLabel(modifier),
-      reference: modifier.reference !== system.reference ? modifier.reference : ""
-    };
-  });
+  const components = system.components ?? [];
+  if ( !system.modifiers.length && !system.cr && !components.length ) return true;
   const content = await foundry.applications.handlebars.renderTemplate(`${TEMPLATES}/setup-modifiers.hbs`, {
-    price: priceLabel(system), modifiers, cr: system.cr,
+    price: components.length ? "" : priceLabel(system),
+    modifiers: modifierRows(system.modifiers, "modifier", system.reference),
+    components: components.map((component, index) => ({
+      name: component.name,
+      field: `component-${index}`,
+      price: priceLabel(component, component.levels),
+      modifiers: modifierRows(component.modifiers, `component-${index}-modifier`, component.reference)
+    })),
+    cr: system.cr,
     crChoices: Object.fromEntries([6, 9, 12, 15].map(cr => [cr, `GMENTOR.SelfControlLevel.${cr}`]))
   });
   const answer = await foundry.applications.api.DialogV2.input({
@@ -56,8 +58,32 @@ async function askModifiers(data) {
   });
   if ( !answer ) return false;
   system.modifiers.forEach((modifier, index) => modifier.enabled = !!answer[`modifier-${index}`]);
+  components.forEach((component, index) => {
+    component.modifiers.forEach((modifier, m) => modifier.enabled = !!answer[`component-${index}-modifier-${m}`]);
+  });
+  if ( components.length ) system.components = components.filter((component, index) => answer[`component-${index}`]);
   if ( system.cr ) system.cr = Number(answer.cr);
   return true;
+}
+
+/**
+ * Строки модификаторов для окна: field — имя поля формы без индекса, ссылка — только если отличается от ссылки
+ * черты. Между группами — разделитель, как перенос строки в окне GMentor. Группа в окне своя у каждой части.
+ */
+function modifierRows(modifiers, field, reference) {
+  let previousGroup;
+  return modifiers.map((modifier, index) => {
+    const separated = (index > 0) && (modifier.group !== previousGroup);
+    previousGroup = modifier.group;
+    return {
+      ...modifier,
+      field: `${field}-${index}`,
+      group: modifier.group ? `${field}:${modifier.group}` : "",
+      separated,
+      cost: modifierCostLabel(modifier),
+      reference: modifier.reference !== reference ? modifier.reference : ""
+    };
+  });
 }
 
 /** Включённый в диалоге модификатор выключает остальные из своей группы (правило из AdvantageData). */
@@ -69,11 +95,15 @@ function disableGroupmates(event) {
   }
 }
 
-/** Базовая цена черты, как «Базовая стоимость» в GMentor: «15», «5/ур.», «5 + 10/ур.». */
-function priceLabel({ basePoints, pointsPerLevel }) {
+/**
+ * Базовая цена черты, как «Базовая стоимость» в GMentor: «15», «5/ур.», «5 + 10/ур.». С levels — ещё уровень
+ * (у части составной черты он уже выбран): «4/ур. × 5».
+ */
+function priceLabel({ basePoints, pointsPerLevel }, levels) {
   const perLevel = game.i18n.format("GMENTOR.PerLevelPrice", { points: pointsPerLevel });
   if ( !pointsPerLevel ) return String(basePoints);
-  return basePoints ? `${basePoints} + ${perLevel}` : perLevel;
+  const price = basePoints ? `${basePoints} + ${perLevel}` : perLevel;
+  return levels ? `${price} × ${levels}` : price;
 }
 
 /** Цена модификатора: «+20%», «−4 очк.», «×2». */
@@ -109,22 +139,26 @@ async function askPlaceholders(data) {
 }
 
 /**
- * Заглушки в названии, пометке, специализации, включённых модификаторах и эффектах. Выключенные модификаторы
- * не спрашиваем, как GMentor: их заглушки игроку не нужны.
+ * Заглушки в названии, пометке, специализации, включённых модификаторах и эффектах, у составной черты —
+ * и в её частях. Выключенные модификаторы не спрашиваем, как GMentor: их заглушки игроку не нужны.
  */
 function findPlaceholders(data) {
   const system = data.system;
-  const activeModifiers = (system.modifiers ?? []).filter(m => m.enabled);
-  const features = [...(system.features ?? []), ...activeModifiers.flatMap(m => m.features)];
-  const texts = [data.name, system.notes, system.specialization,
-    ...activeModifiers.flatMap(m => [m.name, m.notes]),
-    ...features.flatMap(feature => Object.values(feature))];
+  const texts = [data.name, system.specialization, ...[system, ...(system.components ?? [])].flatMap(traitTexts)];
   const found = new Set();
   for ( const text of texts ) {
     if ( typeof text !== "string" ) continue;
     for ( const [, name] of text.matchAll(PLACEHOLDER) ) found.add(name);
   }
   return [...found];
+}
+
+/** Тексты черты, части черты или снаряжения, в которых бывают заглушки. */
+function traitTexts(trait) {
+  const activeModifiers = (trait.modifiers ?? []).filter(m => m.enabled);
+  const features = [...(trait.features ?? []), ...activeModifiers.flatMap(m => m.features)];
+  return [trait.name, trait.notes, ...activeModifiers.flatMap(m => [m.name, m.notes]),
+    ...features.flatMap(feature => Object.values(feature))];
 }
 
 /** Применить replace ко всем строкам в объекте и массивах внутри него. */

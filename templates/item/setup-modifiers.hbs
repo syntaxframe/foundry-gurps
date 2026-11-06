@@ -1,16 +1,32 @@
-{{!-- Выбор модификаторов и самоконтроля при добавлении черты, как окно editAdvantage в GMentor --}}
-<p class="setup-price">{{localize "GMENTOR.BasePoints"}}: <b>{{price}}</b></p>
-{{#if modifiers.length}}
+{{!--
+  Выбор модификаторов и самоконтроля при добавлении черты, как окно editAdvantage в GMentor. У составной черты —
+  части с галочками (по умолчанию все), под каждой её модификаторы.
+--}}
+{{#*inline "modifierList"}}
 <div class="setup-modifiers">
-  {{#each modifiers}}
-  <label class="setup-modifier {{#if separated}}separated{{/if}}">
-    <input type="checkbox" name="modifier-{{index}}" {{#if group}}data-group="{{group}}"{{/if}} {{checked enabled}}>
-    <span class="setup-name">{{name}}{{#if notes}} <span class="setup-notes">({{notes}})</span>{{/if}}</span>
-    <span class="setup-cost">{{cost}}</span>
-    <span class="setup-ref">{{reference}}</span>
+  {{#each modifiers as |modifier|}}
+  <label class="setup-modifier {{#if modifier.separated}}separated{{/if}}">
+    <input type="checkbox" name="{{modifier.field}}" {{#if modifier.group}}data-group="{{modifier.group}}"{{/if}} {{checked modifier.enabled}}>
+    <span class="setup-name">{{modifier.name}}{{#if modifier.notes}} <span class="setup-notes">({{modifier.notes}})</span>{{/if}}</span>
+    <span class="setup-cost">{{modifier.cost}}</span>
+    <span class="setup-ref">{{modifier.reference}}</span>
   </label>
   {{/each}}
 </div>
+{{/inline}}
+{{#if price}}<p class="setup-price">{{localize "GMENTOR.BasePoints"}}: <b>{{price}}</b></p>{{/if}}
+{{#if modifiers.length}}{{> modifierList modifiers=modifiers}}{{/if}}
+{{#if components.length}}
+<p class="hint">{{localize "GMENTOR.ComponentsSetupHint"}}</p>
+{{#each components as |component|}}
+<fieldset class="setup-component">
+  <legend>
+    <label><input type="checkbox" name="{{component.field}}" checked> {{component.name}}</label>
+    <span class="setup-cost">{{component.price}}</span>
+  </legend>
+  {{#if component.modifiers.length}}{{> modifierList modifiers=component.modifiers}}{{/if}}
+</fieldset>
+{{/each}}
 {{/if}}
 {{#if cr}}
 <div class="form-group">

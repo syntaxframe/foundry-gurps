@@ -44,6 +44,7 @@ Hooks.once("init", () => {
     "systems/gmentor/templates/actor/learned-values.hbs",
     "systems/gmentor/templates/actor/weapon-modes.hbs",
     "systems/gmentor/templates/item/features.hbs",
+    "systems/gmentor/templates/item/trait-fields.hbs",
     "systems/gmentor/templates/item/setup-modifiers.hbs",
     "systems/gmentor/templates/item/setup-placeholders.hbs"
   ]);

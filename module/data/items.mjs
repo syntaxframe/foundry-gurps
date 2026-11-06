@@ -50,71 +50,97 @@ const features = () => new ArrayField(new TypedSchemaField({
   costReduction: { attribute: choice(rules.COST_REDUCTION_ATTRIBUTES, "st"), ...scaled() }
 }));
 
-/** Преимущество, недостаток, причуда или перк. Цена считается так же, как в GMentor (advantages.js). */
+/**
+ * Цена и эффекты черты: у самой черты и у каждой части составной черты одинаковые. Поля создаются функцией:
+ * один экземпляр поля нельзя вставить в схему дважды.
+ */
+const traitFields = () => ({
+  // Короткая пометка для строки на листе
+  notes: text(),
+  basePoints: integer(0),
+  pointsPerLevel: integer(0),
+  levels: integer(0, { min: 0 }),
+  cr: integer(0),
+  roundDown: new BooleanField(),
+  modifiers: new ArrayField(new SchemaField({
+    name: text(),
+    notes: text(),
+    reference: text(),
+    enabled: new BooleanField({ initial: true }),
+    // Как value меняет цену, см. rules.traitCost
+    costType: choice(["percentage", "points", "multiplier"], "percentage"),
+    value: number(0),
+    affects: choice(["total", "base", "levels"], "total"),
+    levels: integer(1, { min: 1 }),
+    // Модификаторы одной группы взаимоисключающие, как radiogroup в GMentor (варианты Внешности, Богатства)
+    group: text(),
+    features: features()
+  })),
+  features: features()
+});
+
+/**
+ * Эффекты черты или части и её включённых модификаторов с итоговой величиной value. За уровень обычный эффект
+ * умножается на уровень, а множитель богатства возводится в степень, как в GMentor: 10 за уровень → 10^ур.
+ */
+function traitActiveFeatures(trait) {
+  const enabledModifiers = trait.modifiers.filter(m => m.enabled);
+  return [trait.features, ...enabledModifiers.map(m => m.features)].flat().map(feature => {
+    if ( !feature.perLevel ) return { ...feature, value: feature.amount };
+    const value = (feature.type === "wealth") ? feature.amount ** trait.levels : feature.amount * trait.levels;
+    return { ...feature, value };
+  });
+}
+
+/** Включённый модификатор выключает остальные модификаторы своей группы. before — модификаторы до изменения. */
+function disableGroupmates(modifiers, before = []) {
+  const switchedOn = modifiers.filter((m, i) => m.enabled && m.group && !before[i]?.enabled);
+  for ( const on of switchedOn ) {
+    for ( const other of modifiers ) {
+      if ( (other !== on) && (other.group === on.group) ) other.enabled = false;
+    }
+  }
+}
+
+/**
+ * Преимущество, недостаток, причуда или перк. Цена считается так же, как в GMentor (advantages.js).
+ * Составная черта («Бионическая нога» — Повышенное перемещение и Сопротивление вреду; группа или meta_trait
+ * в GCS) — одна черта с частями components: у каждой части свои уровни, модификаторы и эффекты.
+ * Цена — своя плюс цены частей, эффекты — свои и всех частей.
+ */
 export class AdvantageData extends BaseItemData {
   static defineSchema() {
     return {
       ...super.defineSchema(),
-      // Короткая пометка для строки на листе
-      notes: text(),
-      basePoints: integer(0),
-      pointsPerLevel: integer(0),
-      levels: integer(0, { min: 0 }),
-      cr: integer(0),
-      roundDown: new BooleanField(),
+      ...traitFields(),
       quirk: new BooleanField(),
-      modifiers: new ArrayField(new SchemaField({
+      components: new ArrayField(new SchemaField({
         name: text(),
-        notes: text(),
         reference: text(),
-        enabled: new BooleanField({ initial: true }),
-        // Как value меняет цену, см. rules.traitCost
-        costType: choice(["percentage", "points", "multiplier"], "percentage"),
-        value: number(0),
-        affects: choice(["total", "base", "levels"], "total"),
-        levels: integer(1, { min: 1 }),
-        // Модификаторы одной группы взаимоисключающие, как radiogroup в GMentor (варианты Внешности, Богатства)
-        group: text(),
-        features: features()
-      })),
-      features: features()
+        ...traitFields()
+      }))
     };
   }
 
   prepareDerivedData() {
-    this.cost = rules.traitCost(this);
-    this.activeFeatures = this.#activeFeatures();
-  }
-
-  /**
-   * Эффекты черты и её включённых модификаторов с итоговой величиной value. За уровень обычный эффект
-   * умножается на уровень, а множитель богатства возводится в степень, как в GMentor: 10 за уровень → 10^ур.
-   */
-  #activeFeatures() {
-    const enabledModifiers = this.modifiers.filter(m => m.enabled);
-    return [this.features, ...enabledModifiers.map(m => m.features)].flat().map(feature => {
-      if ( !feature.perLevel ) return { ...feature, value: feature.amount };
-      const value = (feature.type === "wealth") ? feature.amount ** this.levels : feature.amount * this.levels;
-      return { ...feature, value };
-    });
+    for ( const component of this.components ) component.cost = rules.traitCost(component);
+    this.cost = rules.traitCost(this) + this.components.reduce((sum, component) => sum + component.cost, 0);
+    this.activeFeatures = [this, ...this.components].flatMap(traitActiveFeatures);
   }
 
   /** @inheritDoc */
   async _preUpdate(changes, options, user) {
     const modifiers = changes.system?.modifiers;
-    if ( Array.isArray(modifiers) ) this.#disableGroupmates(modifiers);
-    return super._preUpdate(changes, options, user);
-  }
-
-  /** Включённый модификатор выключает остальные модификаторы своей группы. */
-  #disableGroupmates(modifiers) {
-    const before = this._source.modifiers;
-    const switchedOn = modifiers.filter((m, i) => m.enabled && m.group && !before[i]?.enabled);
-    for ( const on of switchedOn ) {
-      for ( const other of modifiers ) {
-        if ( (other !== on) && (other.group === on.group) ) other.enabled = false;
-      }
+    if ( Array.isArray(modifiers) ) disableGroupmates(modifiers, this._source.modifiers);
+    const components = changes.system?.components;
+    if ( Array.isArray(components) ) {
+      components.forEach((component, index) => {
+        if ( Array.isArray(component.modifiers) ) {
+          disableGroupmates(component.modifiers, this._source.components[index]?.modifiers);
+        }
+      });
     }
+    return super._preUpdate(changes, options, user);
   }
 }
 
