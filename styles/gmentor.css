@@ -215,6 +215,16 @@
   resize: none;
 }
 
+/* Лист предмета не выше экрана (max-height окна Foundry), длинное содержимое прокручивается.
+   Части формы не сжимаются flex-раскладкой, иначе прокрутка не появится, а части наедут друг на друга. */
+.gmentor.item .window-content {
+  overflow-y: auto;
+}
+
+.gmentor.item .window-content > * {
+  flex-shrink: 0;
+}
+
 .gmentor.item .sheet-header {
   display: flex;
   gap: 0.75rem;
