@@ -868,6 +868,21 @@
   gap: 2px;
 }
 
+/* Крестик убрать требование: виден при наведении на строку заклинания */
+.gmentor .spell-prereqs .prereq-delete {
+  margin-left: 2px;
+  color: var(--gm-dim);
+  visibility: hidden;
+}
+
+.gmentor .spell-row:hover .prereq-delete {
+  visibility: visible;
+}
+
+.gmentor .spell-prereqs .prereq-delete:hover {
+  color: var(--gm-warn);
+}
+
 .gmentor .spell-prereqs .met {
   opacity: 0.5;
 }

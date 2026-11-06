@@ -1189,6 +1189,9 @@
     "PrereqHas": "has",
     "PrereqHasHint": "Uncheck if the character must not have the skill",
     "Prereq": {
+      "delete": "Remove prerequisite",
+      "deleteGroup": "Remove prerequisite group",
+      "deleteAll": "Remove all prerequisites",
       "unmet": "Unmet prerequisites: {prereqs}",
       "or": "or",
       "all": "Requires:",

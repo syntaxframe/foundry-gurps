@@ -72,6 +72,7 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
       createItem: CharacterSheet.#onCreateItem,
       editItem: CharacterSheet.#onEditItem,
       deleteItem: CharacterSheet.#onDeleteItem,
+      deletePrereq: CharacterSheet.#onDeletePrereq,
       cycleState: CharacterSheet.#onCycleState,
       toggleContainer: CharacterSheet.#onToggleContainer,
       spendAmmo: CharacterSheet.#onSpendAmmo,
@@ -784,6 +785,20 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   static #onDeleteItem(event, target) {
     return this.#getItem(target)?.deleteDialog();
+  }
+
+  /**
+   * Убрать требование заклинания (группу «одно из» целиком) прямо с листа персонажа. Без data-group — все требования.
+   * Меняется только заклинание этого персонажа, запись в библиотеке остаётся.
+   */
+  static #onDeletePrereq(event, target) {
+    if ( !this.isEditable ) return;
+    const item = this.#getItem(target);
+    if ( !item ) return;
+    const groupIndex = target.dataset.group;
+    const prereqGroups = groupIndex === undefined ? []
+      : item.system.toObject().prereqGroups.filter((group, index) => index !== Number(groupIndex));
+    return item.update({ "system.prereqGroups": prereqGroups });
   }
 
   /** Свернуть или развернуть содержимое контейнера, как expander в GMentor. Запоминается до закрытия листа. */

@@ -16,17 +16,22 @@
 
         {{> "systems/gmentor/templates/actor/weapon-modes.hbs"}}
 
-        {{!-- Требования, если какое-то не выполнено: выполненные бледно, как prereq-ok в GMentor --}}
+        {{!-- Требования, если какое-то не выполнено: выполненные бледно, как prereq-ok в GMentor.
+              Крестик убирает требование (группу «одно из» целиком) из заклинания этого персонажа --}}
         {{#if prereqs}}
         <div class="spell-prereqs">
-          <span class="label">{{localize "GMENTOR.Prereq.all"}}</span>
-          {{#each prereqs}}
-          {{#if single}}
-          {{#each entries}}<span class="prereq {{#if met}}met{{/if}}">{{text}}</span>{{/each}}
+          <span class="label">{{localize "GMENTOR.Prereq.all"}}
+            <a class="prereq-delete" data-action="deletePrereq" data-tooltip="GMENTOR.Prereq.deleteAll"><i class="fa-solid fa-xmark" inert></i></a>
+          </span>
+          {{#each prereqs as |group groupIndex|}}
+          {{#if group.single}}
+          {{#each group.entries as |entry|}}<span class="prereq {{#if entry.met}}met{{/if}}">{{entry.text}}
+            <a class="prereq-delete" data-action="deletePrereq" data-group="{{groupIndex}}" data-tooltip="GMENTOR.Prereq.delete"><i class="fa-solid fa-xmark" inert></i></a></span>{{/each}}
           {{else}}
-          <span class="prereq-group {{#if met}}met{{/if}}">
+          <span class="prereq-group {{#if group.met}}met{{/if}}">
             <span class="label">{{localize "GMENTOR.Prereq.any"}}</span>
-            {{#each entries}}<span class="prereq {{#if met}}met{{/if}}">{{text}}</span>{{/each}}
+            {{#each group.entries as |entry|}}<span class="prereq {{#if entry.met}}met{{/if}}">{{entry.text}}</span>{{/each}}
+            <a class="prereq-delete" data-action="deletePrereq" data-group="{{groupIndex}}" data-tooltip="GMENTOR.Prereq.deleteGroup"><i class="fa-solid fa-xmark" inert></i></a>
           </span>
           {{/if}}
           {{/each}}
