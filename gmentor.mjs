@@ -52,8 +52,23 @@ Hooks.once("init", () => {
 // Кнопка «Списать энергию» в сообщении о сотворении заклинания
 Hooks.on("renderChatMessageHTML", onRenderChatMessage);
 
-// Кнопка «Импорт библиотеки GCS» на вкладке компендиумов: создавать компендиумы мира может только ведущий
 Hooks.on("renderCompendiumDirectory", (directory, html) => {
+  addLibraryDescriptions(html);
+  addLibraryImportButton(html);
+});
+
+/** Описание библиотеки, импортированной из GCS (флаг gmentor.description), — подсказкой к компендиуму. */
+function addLibraryDescriptions(html) {
+  for ( const entry of html.querySelectorAll("li.compendium[data-pack]") ) {
+    const description = game.packs.get(entry.dataset.pack)?.metadata.flags?.gmentor?.description;
+    if ( !description ) continue;
+    entry.dataset.tooltipText = description;
+    entry.dataset.tooltipClass = "gmentor library-tooltip";
+  }
+}
+
+/** Кнопка «Импорт библиотеки GCS» на вкладке компендиумов: создавать компендиумы мира может только ведущий. */
+function addLibraryImportButton(html) {
   if ( !game.user.isGM || html.querySelector(".gmentor-import-library") ) return;
   const button = document.createElement("button");
   button.type = "button";
@@ -61,4 +76,4 @@ Hooks.on("renderCompendiumDirectory", (directory, html) => {
   button.innerHTML = `<i class="fa-solid fa-file-import" inert></i><span>${game.i18n.localize("GMENTOR.Import.libraryTitle")}</span>`;
   button.addEventListener("click", importLibraryFromFile);
   html.querySelector(".header-actions")?.append(button);
-});
+}

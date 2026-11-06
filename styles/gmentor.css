@@ -886,6 +886,17 @@
   margin-bottom: 0;
 }
 
+/* Картинки описаний (снаряжение GMentor) — не шире листа, в списке — небольшие */
+.gmentor .description img,
+.gmentor .item-description img {
+  max-width: 100%;
+  height: auto;
+}
+
+.gmentor .item-description img {
+  max-height: 8rem;
+}
+
 .gmentor .notes prose-mirror,
 .gmentor .description prose-mirror {
   min-height: 200px;
@@ -2081,4 +2092,11 @@
 
 .gmentor .equipment-totals {
   flex: 1;
+}
+
+/* Подсказка к компендиуму библиотеки, импортированной из GCS: описание абзацами */
+#tooltip.gmentor.library-tooltip {
+  max-width: 24rem;
+  text-align: left;
+  white-space: pre-line;
 }

@@ -821,6 +821,8 @@
       "H": "H",
       "VH": "VH"
     },
+    "PickerTitle": "Library: {type}",
+    "PickerLibrary": "Library",
     "PickerSearch": "Search in Russian or English",
     "PickerAllFolders": "All categories",
     "PickerHint": "Click a name to add it; the window stays open",
@@ -1251,8 +1253,8 @@
       "skipped": "Not imported:",
       "notInLibrary": "not in the library ({type}): no identifier or description",
       "libraryTitle": "Import GCS Library",
-      "libraryCreate": "A world compendium «{label}» will be created with the items from the file. Continue?",
-      "libraryReplace": "The world compendium «{label}» already exists: it will be deleted and recreated from the file. Items already added to characters are not changed. Continue?",
+      "libraryCreate": "World compendiums «{label}» (one each for traits, skills, spells and equipment) will be created with the items from the file. Continue?",
+      "libraryReplace": "World compendiums «{label}» already exist: they will be deleted and recreated from the file. Items already added to characters are not changed. Continue?",
       "libraryWorking": "Importing the library… Large libraries hold thousands of items, this takes a while.",
       "libraryDone": "Library imported.",
       "folder": {

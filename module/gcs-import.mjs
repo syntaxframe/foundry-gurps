@@ -84,18 +84,19 @@ function isGroup(entry) {
 /**
  * Библиотека из файла GCS. Библиотеки в GCS ведут как персонажа на 0 очков: группы — разделы библиотеки,
  * у снаряжения разделы — «контейнеры» без своей цены, веса и оружия, а строки из чёрточек — разделители.
- * Разделы становятся папками компендиума, «А / Б» в названии раздела — вложенными папками.
- * Глубже FolderTree.MAX_DEPTH Foundry папки не вкладывает: такие разделы склеиваются с родителем («Броня / Военные»).
+ * Как в GCS (файлы .adq, .skl, .spl, .eqp), каждый тип — отдельная библиотека: свой компендиум, тип понятен
+ * по нему. Разделы становятся папками компендиума, «А / Б» в названии раздела — вложенными папками.
+ * Глубже FolderTree.MAX_DEPTH Foundry папки не вкладывает: такие разделы склеиваются с папкой последнего уровня
+ * («Пистолеты и Револьверы / Тяжелые пистолеты и револьверы»), названия предметов не меняются.
  * @param {object} gcs  Разобранный JSON файла
- * @param {Record<string, string>} typeFolders  Названия верхних папок по типу предмета: «Черты», «Умения»…
- * @returns {{folders: {_id: string, name: string, folder: string|null, depth: number, sort: number}[],
- *   items: object[], skipped: {reason: string, count: number}[]}}  Предметы — как у convertGcsCharacter, с folder
+ * @returns {{libraries: {type: string, folders: object[], items: object[]}[], description: string,
+ *   portrait: string|null, skipped: {reason: string, count: number}[]}}  libraries — по типам, в которых
+ *   есть предметы; папки — {_id, name, folder, depth, sort}, предметы — как у convertGcsCharacter, с folder и sort;
+ *   description — заметки файла текстом, portrait — PNG в base64
  */
-export function convertGcsLibrary(gcs, typeFolders) {
+export function convertGcsLibrary(gcs) {
   if ( !gcs?.version || !gcs.profile ) throw new Error("Not a GCS file");
   const skipped = new SkipReport();
-  const tree = new FolderTree();
-  const items = [];
   const sections = [
     ["advantage", gcs.traits, trait => [convertTrait(trait, skipped)]],
     ["skill", gcs.skills, skill => [convertSkill(skill, skipped)]],
@@ -104,21 +105,66 @@ export function convertGcsLibrary(gcs, typeFolders) {
     ["equipment", [...gcs.equipment ?? [], ...gcs.other_equipment ?? []],
       entry => convertEquipmentList([entry], "equipped", skipped).map(item => ({ ...item, system: { ...item.system, containerId: "" } }))]
   ];
-  for ( const [type, list, convert] of sections ) {
-    if ( !list?.length ) continue;
-    const root = tree.folder(typeFolders[type], null);
-    const visit = (entries, parent) => {
-      for ( const entry of entries ) {
-        const name = entry.name ?? entry.description ?? "";
-        if ( /^\s*-*\s*$/.test(name) ) continue;
-        if ( isSection(entry, type) ) visit(entry.children, tree.path(name, parent));
-        else items.push(...convert(entry).filter(Boolean).map(item => ({ ...item, folder: parent._id })));
+  const libraries = sections.map(([type, list, convert]) => convertSection(type, list ?? [], convert))
+    .filter(library => library.items.length);
+  return {
+    libraries,
+    description: libraryDescription(gcs),
+    portrait: gcs.profile.portrait || null,
+    skipped: skipped.entries
+  };
+}
+
+/** Одна библиотека: предметы типа type с папками по разделам. */
+function convertSection(type, list, convert) {
+  const tree = new FolderTree();
+  const items = [];
+  const nameField = type === "equipment" ? "description" : "name";
+  const visit = (entries, place) => {
+    for ( const entry of entries ) {
+      const name = entry[nameField] ?? "";
+      if ( /^\s*-*\s*$/.test(name) ) continue;
+      if ( isSection(entry, type) ) {
+        visit(entry.children, tree.path(pathParts(name), place));
+        continue;
       }
-    };
-    visit(list, root);
-  }
+      // Составные черты Shadowrun лежат вне разделов, а раздел записан в названии: «Протезы / Общие / Подкожная броня».
+      // У остальных записей косая черта — часть названия: «Аркана / Тауматургия»
+      const parts = entry.container_type === "meta_trait" ? pathParts(name) : [name];
+      const own = { ...entry, [nameField]: parts.pop() };
+      const folder = tree.path(parts, place);
+      items.push(...convert(own).filter(Boolean).map(item => ({ ...item, folder: folder?._id ?? null })));
+    }
+  };
+  visit(list, null);
   items.forEach((item, index) => item.sort = index + 1);
-  return { folders: tree.withoutEmpty(items), items, skipped: skipped.entries };
+  return { type, folders: tree.withoutEmpty(items), items };
+}
+
+/**
+ * Части пути раздела: «Протезы / Общие / Подкожная броня» → три части. Косая черта в скобках —
+ * часть названия: «Аносмия (Нет обоняния / вкуса)».
+ */
+function pathParts(name) {
+  const parts = [""];
+  let depth = 0;
+  for ( let index = 0; index < name.length; index++ ) {
+    const char = name[index];
+    if ( char === "(" ) depth++;
+    else if ( char === ")" ) depth = Math.max(0, depth - 1);
+    if ( (depth === 0) && name.startsWith(" / ", index) ) {
+      parts.push("");
+      index += 2;
+    }
+    else parts[parts.length - 1] += char;
+  }
+  return parts.map(part => part.trim()).filter(Boolean);
+}
+
+/** Описание библиотеки — заметки «персонажа»-библиотеки простым текстом, абзацы через пустую строку. */
+function libraryDescription(gcs) {
+  return (gcs.notes ?? []).map(note => note.text ?? note.markdown ?? "")
+    .flatMap(text => text.split(/\n+/)).map(line => line.trim()).filter(Boolean).join("\n\n");
 }
 
 /** Раздел библиотеки: группа черт, умений, заклинаний или «контейнер» снаряжения без своих данных. */
@@ -132,16 +178,21 @@ function isSection(entry, type) {
 /** Папки компендиума: одна папка на путь, глубина не больше MAX_DEPTH. */
 class FolderTree {
   // В компендиуме папки вкладываются на уровень меньше, чем в боковой панели: CONST.FOLDER_MAX_DEPTH − 1
-  // (CompendiumCollection#maxFolderDepth). Папку глубже Foundry не создаёт, и предметы в ней не видны
+  // (CompendiumCollection#maxFolderDepth, проверка в Folder#_preCreate). Папку глубже Foundry не создаёт
   static MAX_DEPTH = 3;
 
   folders = [];
 
-  /** Папка name в parent (null — верхний уровень), уже созданная или новая. */
-  folder(name, parent) {
-    // Глубже нельзя: раздел склеивается с родителем и встаёт рядом с ним
+  /** Папка раздела внутри parent (null — верхний уровень): части пути (pathParts) — вложенные папки. */
+  path(parts, parent) {
+    return parts.reduce((folder, part) => this.#folder(part, folder), parent);
+  }
+
+  /** Папка name в parent, уже созданная или новая. */
+  #folder(name, parent) {
+    // Глубже нельзя: раздел склеивается с папкой последнего уровня и встаёт рядом с ней
     if ( parent?.depth === FolderTree.MAX_DEPTH ) {
-      return this.folder(`${parent.name} / ${name}`, this.folders.find(f => f._id === parent.folder) ?? null);
+      return this.#folder(`${parent.name} / ${name}`, this.folders.find(f => f._id === parent.folder) ?? null);
     }
     const parentId = parent?._id ?? null;
     const existing = this.folders.find(f => (f.folder === parentId) && (f.name === name));
@@ -153,7 +204,7 @@ class FolderTree {
 
   /**
    * Папки, в которых есть предметы или вложенные папки с ними. Раздел, все подразделы которого склеены
-   * с ним на последнем уровне («Снаряжение / Контейнеры» рядом со «Снаряжение»), остаётся пустым.
+   * с ним на последнем уровне, остаётся пустым.
    */
   withoutEmpty(items) {
     const used = new Set(items.map(item => item.folder));
@@ -161,12 +212,6 @@ class FolderTree {
       if ( used.has(folder._id) && folder.folder ) used.add(folder.folder);
     }
     return this.folders.filter(folder => used.has(folder._id));
-  }
-
-  /** «Всем брать обязательно! / Репутация» — вложенные папки. */
-  path(name, parent) {
-    return name.split(" / ").map(part => part.trim()).filter(Boolean)
-      .reduce((folder, part) => this.folder(part, folder), parent);
   }
 }
 
@@ -216,6 +261,18 @@ function paragraphs(text) {
     .map(line => `<p>${escapeHtml(line)}</p>`).join("");
 }
 
+/**
+ * Заметка GCS (local_notes) — и короткая пометка («Действует немедленно»), и целое описание (у эликсиров
+ * «Длительность… Форма… Цена… Рецепт…»). На листе пометка — одна строка под названием, поэтому
+ * многострочный или длинный текст идёт в описание абзацами.
+ */
+const NOTES_MAX_LENGTH = 100;
+
+function notesParts(text) {
+  if ( !text.includes("\n") && (text.length <= NOTES_MAX_LENGTH) ) return { notes: text, description: "" };
+  return { notes: "", description: paragraphs(text) };
+}
+
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -247,7 +304,7 @@ function convertTrait(trait, skipped) {
     lookup: name,
     system: {
       reference: trait.reference ?? "",
-      notes: replaced(trait.local_notes ?? trait.notes, replacements),
+      ...notesParts(replaced(trait.local_notes ?? trait.notes, replacements)),
       basePoints: trait.base_points ?? 0,
       pointsPerLevel: trait.points_per_level ?? 0,
       levels: trait.can_level ? Math.floor(trait.levels ?? 0) : 0,
@@ -280,14 +337,15 @@ function convertMetaTrait(trait, skipped) {
   };
   const name = replaced(trait.name, trait.replacements);
   const cost = trait.calc?.points ?? 0;
+  const { notes, description } = notesParts(replaced(trait.local_notes ?? trait.notes, trait.replacements));
   return {
     type: "advantage",
     name,
     lookup: name,
     system: {
       reference: trait.reference ?? "",
-      description: `<ul>${parts.map(partText).join("")}</ul>`,
-      notes: replaced(trait.local_notes ?? trait.notes, trait.replacements),
+      description: `${description}<ul>${parts.map(partText).join("")}</ul>`,
+      notes,
       basePoints: cost,
       quirk: cost === -1,
       modifiers: [],
@@ -467,7 +525,7 @@ function convertEquipment(entry, defaultState, skipped, containerId) {
     lookup: name,
     system: {
       reference: entry.reference ?? "",
-      notes: replaced(entry.local_notes ?? entry.notes, entry.replacements),
+      ...notesParts(replaced(entry.local_notes ?? entry.notes, entry.replacements)),
       quantity: Math.max(0, Math.floor(entry.quantity ?? 1)),
       weight: weightKg(entry.base_weight ?? entry.weight),
       value: parseFloat(entry.base_value ?? entry.value) || 0,
@@ -589,8 +647,10 @@ export function applyLibraryEntry(item, library) {
   const fromLibrary = library?.system;
   if ( fromLibrary ) {
     system.identifier = fromLibrary.identifier;
-    // Своё описание есть только у составной черты — её состав
-    system.description ||= fromLibrary.description;
+    // Своё описание (длинная заметка файла, состав составной черты) — первым, за ним описание библиотеки
+    system.description = [system.description, fromLibrary.description].filter(Boolean).join("");
+    // Картинка библиотеки: у снаряжения GMentor — своя, у остальных — значок по умолчанию
+    if ( library.img ) data.img = library.img;
   }
   switch ( item.type ) {
     case "advantage":
@@ -627,7 +687,7 @@ export async function importGcsCharacter(actor, gcs) {
   const { prepared, missing } = await withLibraryData(items);
   prepared.forEach((item, index) => item.sort = (index + 1) * CONST.SORT_INTEGER_DENSITY);
 
-  const img = portrait ? await uploadPortrait(actor, portrait) : null;
+  const img = portrait ? await uploadImage(`worlds/${game.world.id}/portraits`, `${actor.id}.png`, portrait) : null;
   if ( img ) actorData.img = img;
   await actor.deleteEmbeddedDocuments("Item", actor.items.map(item => item.id));
   await actor.update(actorData);
@@ -636,21 +696,40 @@ export async function importGcsCharacter(actor, gcs) {
 }
 
 /**
- * Компендиум предметов мира из библиотеки GCS (см. convertGcsLibrary). Компендиум с тем же названием
- * создаётся заново.
+ * Компендиумы предметов мира из библиотеки GCS (см. convertGcsLibrary): по одному на тип («Shadowrun: Черты»),
+ * все — в папке компендиумов с названием библиотеки. Компендиумы этой библиотеки создаются заново.
+ * Портрет библиотеки — обложка компендиумов, заметки — подсказка к ним (флаг gmentor.description,
+ * см. хук renderCompendiumDirectory).
  * @param {object} gcs  Разобранный JSON файла
- * @param {string} label  Название компендиума
+ * @param {string} label  Название библиотеки
  * @returns {Promise<{reason: string, count: number}[]>}  Что не перенесено
  */
 export async function importGcsLibrary(gcs, label) {
-  const typeFolders = Object.fromEntries(["advantage", "skill", "spell", "equipment"]
-    .map(type => [type, game.i18n.localize(`GMENTOR.Import.folder.${type}`)]));
-  const { folders, items, skipped } = convertGcsLibrary(gcs, typeFolders);
-  const { prepared, missing } = await withLibraryData(items);
+  const { libraries, description, portrait, skipped } = convertGcsLibrary(gcs);
+  for ( const pack of libraryPacks(label) ) await pack.deleteCompendium();
+  const fileName = `${label.slugify({ strict: true }) || "library"}.png`;
+  const banner = portrait ? await uploadImage(`worlds/${game.world.id}/libraries`, fileName, portrait) : null;
+  const folder = await compendiumFolder(label);
 
-  const { CompendiumCollection } = foundry.documents.collections;
-  await worldPack(label)?.deleteCompendium();
-  const pack = await CompendiumCollection.createCompendium({ type: "Item", label });
+  const notFound = [];
+  for ( const library of libraries ) {
+    const { prepared, missing } = await withLibraryData(library.items);
+    notFound.push(...missing);
+    const typeLabel = game.i18n.localize(`GMENTOR.Import.folder.${library.type}`);
+    const pack = await foundry.documents.collections.CompendiumCollection.createCompendium({
+      type: "Item",
+      label: `${label}: ${typeLabel}`,
+      banner: banner ?? undefined,
+      flags: { gmentor: { library: label, itemType: library.type, description } }
+    });
+    await pack.setFolder(folder);
+    await fillPack(pack, library.folders, prepared);
+  }
+  return [...skipped, ...mergeReports(notFound)];
+}
+
+/** Папки и предметы в новом компендиуме. */
+async function fillPack(pack, folders, items) {
   // Родитель должен существовать до вложенной папки, поэтому папки создаются по уровням
   for ( let depth = 1; depth <= FolderTree.MAX_DEPTH; depth++ ) {
     const level = folders.filter(folder => folder.depth === depth)
@@ -658,15 +737,31 @@ export async function importGcsLibrary(gcs, label) {
     if ( level.length ) await Folder.implementation.createDocuments(level, { pack: pack.collection, keepId: true });
   }
   // Тысячи предметов — частями, чтобы не упереться в размер одного запроса
-  for ( let start = 0; start < prepared.length; start += 500 ) {
-    await Item.implementation.createDocuments(prepared.slice(start, start + 500), { pack: pack.collection });
+  for ( let start = 0; start < items.length; start += 500 ) {
+    await Item.implementation.createDocuments(items.slice(start, start + 500), { pack: pack.collection });
   }
-  return [...skipped, ...missing];
 }
 
-/** Компендиум мира с таким названием или undefined. */
-export function worldPack(label) {
-  return game.packs.find(pack => (pack.metadata.packageType === "world") && (pack.metadata.label === label));
+/** Отчёты нескольких библиотек: одинаковые причины складываются. */
+function mergeReports(entries) {
+  const counts = new Map();
+  for ( const { reason, count } of entries ) counts.set(reason, (counts.get(reason) ?? 0) + count);
+  return [...counts].map(([reason, count]) => ({ reason, count }));
+}
+
+/**
+ * Компендиумы мира, импортированные из библиотеки label: по флагу gmentor.library, а также компендиум
+ * с названием label — так импорт до разделения по типам складывал всё в один.
+ */
+export function libraryPacks(label) {
+  return game.packs.filter(pack => (pack.metadata.packageType === "world")
+    && ((pack.metadata.flags?.gmentor?.library === label) || (pack.metadata.label === label)));
+}
+
+/** Папка компендиумов верхнего уровня с названием библиотеки, существующая или новая. */
+async function compendiumFolder(label) {
+  const existing = game.folders.find(folder => (folder.type === "Compendium") && !folder.folder && (folder.name === label));
+  return existing ?? Folder.implementation.create({ name: label, type: "Compendium" });
 }
 
 /**
@@ -724,7 +819,7 @@ export async function importLibraryFromFile() {
   const file = await readGcsFile();
   if ( !file ) return;
   const label = file.gcs.profile?.name?.trim() || file.name.replace(/\.gcs$/i, "");
-  const key = worldPack(label) ? "GMENTOR.Import.libraryReplace" : "GMENTOR.Import.libraryCreate";
+  const key = libraryPacks(label).length ? "GMENTOR.Import.libraryReplace" : "GMENTOR.Import.libraryCreate";
   const confirmed = await foundry.applications.api.DialogV2.confirm({
     window: { title: "GMENTOR.Import.libraryTitle" },
     content: `<p>${game.i18n.format(key, { label: foundry.utils.escapeHTML(label) })}</p>`
@@ -771,21 +866,23 @@ async function runImport(task, doneKey) {
 }
 
 /**
- * Портрет (PNG в base64) кладётся файлом в папку мира: в данных персонажа картинка весила бы мегабайт.
- * Без права загрузки файлов портрет пропускается.
+ * Портрет из файла GCS (PNG в base64) кладётся файлом в папку мира: в данных документа картинка весила бы
+ * мегабайт. Файл с тем же именем заменяется. Без права загрузки файлов портрет пропускается.
+ * @param {string} folder    Папка в данных Foundry: worlds/<мир>/portraits
+ * @param {string} fileName  Имя файла с расширением .png
+ * @param {string} base64    Содержимое PNG
  * @returns {Promise<string|null>}  Путь к файлу
  */
-async function uploadPortrait(actor, base64) {
+async function uploadImage(folder, fileName, base64) {
   if ( !game.user.can("FILES_UPLOAD") ) return null;
   const FilePicker = foundry.applications.apps.FilePicker.implementation;
-  const folder = `worlds/${game.world.id}/portraits`;
   try {
     await FilePicker.createDirectory("data", folder, { notify: false });
   } catch {
     // Папка уже есть
   }
   const bytes = Uint8Array.from(atob(base64), char => char.charCodeAt(0));
-  const file = new File([bytes], `${actor.id}.png`, { type: "image/png" });
+  const file = new File([bytes], fileName, { type: "image/png" });
   const result = await FilePicker.upload("data", folder, file, {}, { notify: false });
   return result?.path ?? null;
 }

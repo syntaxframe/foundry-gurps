@@ -656,12 +656,17 @@ export default class CharacterSheet extends HandlebarsApplicationMixin(ActorShee
     return importCharacterFromFile(this.actor);
   }
 
-  /** Кнопка «+» списка: выбор из библиотеки, если она есть для этого типа, иначе пустой предмет. */
+  /**
+   * Кнопка «+» списка: выбор из библиотек этого типа (системной и импортированных из GCS), если они есть,
+   * иначе пустой предмет.
+   */
   static #onAddItem(event, target) {
-    const pack = game.packs.get(CONFIG.GMENTOR.libraries[target.dataset.type]);
-    if ( !pack ) return CharacterSheet.#onCreateItem.call(this, event, target);
+    const type = target.dataset.type;
+    const packs = ItemPicker.librariesFor(type);
+    if ( !packs.length ) return CharacterSheet.#onCreateItem.call(this, event, target);
     new ItemPicker({
-      pack,
+      type,
+      packs,
       onPick: async uuid => this.#addItem(game.items.fromCompendium(await fromUuid(uuid), { clearFolder: true })),
       onBlank: () => CharacterSheet.#onCreateItem.call(this, event, target)
     }).render({ force: true });

@@ -1,16 +1,21 @@
 <section class="picker">
   <div class="picker-filters">
+    {{#if libraries}}
+    <select name="library" aria-label="{{localize "GMENTOR.PickerLibrary"}}">
+      {{selectOptions libraries selected=library valueAttr="value" labelAttr="label"}}
+    </select>
+    {{/if}}
     <input type="search" name="search" placeholder="{{localize "GMENTOR.PickerSearch"}}">
     {{#if folders}}
     <select name="folder">
       <option value="">{{localize "GMENTOR.PickerAllFolders"}}</option>
-      {{selectOptions folders}}
+      {{selectOptions folders valueAttr="value" labelAttr="label"}}
     </select>
     {{/if}}
   </div>
   <ol class="picker-list">
     {{#each entries}}
-    <li class="picker-entry" data-uuid="{{uuid}}" data-name="{{search}}" data-identifier="{{identifier}}" data-folder="{{folder}}">
+    <li class="picker-entry" data-uuid="{{uuid}}" data-name="{{search}}" data-identifier="{{identifier}}" data-folders="{{folders}}">
       <a class="picker-name" data-action="pick" {{#if notes}}data-tooltip-text="{{notes}}"{{/if}}>{{name}}</a>
       <span class="picker-summary">{{summary}}</span>
     </li>
